@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Make sure you are mindful of which folder you are working in. The lens folder is for the plasmo browser extension, and the lens-view folder is the nextjs app

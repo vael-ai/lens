@@ -7,7 +7,7 @@ import "./src/env.js";
 /** @type {import("next").NextConfig} */
 const config = {
     experimental: {
-    serverActions: {
+        serverActions: {
             bodySizeLimit: "1mb",
         },
     },

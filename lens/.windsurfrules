@@ -1,0 +1,2 @@
+1. pnpm is my package manager
+2.Run pnpm build after code changes. fix errors if need be and run again after

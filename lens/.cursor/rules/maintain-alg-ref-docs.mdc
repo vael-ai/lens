@@ -1,0 +1,32 @@
+---
+description: When making changes to code that affects how data is processed, structured, or truncated to ensure the alg ref documentation remains accurate and useful for the future algorithm so that the future algorithm can understand what its data to be processed looks like and any slight nuances in it
+globs: 
+alwaysApply: false
+---
+# Protocol Documentation Maintenance Guidelines
+
+After making any code changes that could affect data processing guidelines:
+
+1. Review the documentation overview at [README.md](mdc:alg-ref-docs/README.md) to understand the dynamic documentation system
+2. Read the current algorithm data guide documentation at [alg-data-guide.md](mdc:alg-ref-docs/alg-data-guide.md) to understand its purpose and structure
+3. Update any manually maintained sections or create them in the [alg-data-guide.md](mdc:alg-ref-docs/alg-data-guide.md) if your changes affect them
+4. Run `pnpm update-protocol-docs` to automatically update dynamic variables like truncation symbols and character limits, or future variables
+5. Optionally add new variables and tweak the [alg-data-guide.md](mdc:alg-ref-docs/alg-data-guide.md) if need be to further automate this documentation system for the future algorithm
+6. Optionally update the [README.md](mdc:alg-ref-docs/README.md) if any overall changes need to be made
+7. Optionally update the [update-alg-doc-dynamic-vars.ts](mdc:scripts/update-alg-doc-dynamic-vars.ts) script if any changes are needed there
+8. Verify the documentation accurately reflects your changes and maintains its usefulness for future algorithms
+
+Remember that this documentation serves as a critical reference for the future algorithm that processes data collected by the Vael AI Context Bank. The documentation must accurately describe:
+
+- The data truncation system and current truncation symbol
+- Character limits for all field types
+- Any new dynamic variables that affect the document
+- Domain classification categories and their meanings
+- Element context structure and processing guidelines
+- Special data structures and their intended interpretation
+
+## Purpose for Future Algorithm
+
+This documentation will serve as the primary information source for the algorithm we are developing to understand, rank, and find similarities in collected browsing data. Unlike typical documentation which may become outdated, this document is designed to be dynamically updated and will act as the "source of truth" that the algorithm can rely on.
+
+The future algorithm's ability to correctly process Vael's data depends entirely on this documentation remaining accurate and comprehensive. Every aspect of data processing that would affect how the algorithm interprets, ranks, or finds patterns in the data must be documented here. 

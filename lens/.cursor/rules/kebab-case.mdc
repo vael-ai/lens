@@ -1,0 +1,9 @@
+---
+description: when naming or creating files / folders
+globs: 
+alwaysApply: false
+---
+
+# Your rule content
+
+Always use the kebab-case naming convention when naming or creating files / folders

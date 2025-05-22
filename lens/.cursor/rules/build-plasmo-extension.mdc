@@ -1,0 +1,6 @@
+---
+description: When checking if the plasmo chrome extension has built properly after changes
+globs: 
+alwaysApply: false
+---
+Use pnpm build to see if the plasmo chrome extension code is built properly. Wait for it to build, check if theres any errors and then continue iterating. Be sure to do the build in teh current terminal directory, if errors occur relating to directory change it.

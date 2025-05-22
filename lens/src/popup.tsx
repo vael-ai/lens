@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react"
 
+import { Storage } from "@plasmohq/storage"
+
 import packageInfo from "../package.json"
 import {
   Accordion,
@@ -25,6 +27,12 @@ import {
   getAllCollectedData,
   sendAnalyticsEvent
 } from "./utils/api"
+import {
+  DATA_SIZE_THRESHOLD_BYTES,
+  DATA_SIZE_THRESHOLD_MB,
+  ONBOARDING_COMPLETE_KEY,
+  USER_EMAIL_KEY
+} from "./utils/constants"
 import { createAnalyticsEvent } from "./utils/dataCollection"
 import {
   addToBlacklist,
@@ -52,6 +60,10 @@ function IndexPopup() {
   const [collectedData, setCollectedData] = useState<CollectedData | null>(null)
   const [dataLoading, setDataLoading] = useState(false)
   const [exportSuccess, setExportSuccess] = useState(false)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(false)
+  const [onboardingEmailInput, setOnboardingEmailInput] = useState<string>("")
+  const [dataSizeInBytes, setDataSizeInBytes] = useState<number>(0)
 
   // Load user configuration
   useEffect(() => {
@@ -83,6 +95,23 @@ function IndexPopup() {
             )
           )
         }
+
+        // Load email and onboarding status
+        const storage = new Storage() // Ensure storage is initialized here or globally accessible
+        const storedEmail = await storage.get<string>(USER_EMAIL_KEY)
+        const onboardingComplete = await storage.get<boolean>(
+          ONBOARDING_COMPLETE_KEY
+        )
+
+        if (storedEmail) {
+          setUserEmail(storedEmail)
+        }
+
+        if (!onboardingComplete) {
+          setShowOnboarding(true)
+        } else {
+          setShowOnboarding(false) // Ensure it's false if onboarding is complete
+        }
       } catch (error) {
         console.error("Error loading config:", error)
       } finally {
@@ -109,6 +138,9 @@ function IndexPopup() {
       setDataLoading(true)
       const data = await getAllCollectedData()
       setCollectedData(data)
+      // Calculate and set data size in bytes
+      const rawDataSizeInBytes = data ? JSON.stringify(data).length : 0
+      setDataSizeInBytes(rawDataSizeInBytes)
     } catch (error) {
       console.error("Error loading collected data:", error)
       setCollectedData(null)
@@ -269,15 +301,24 @@ function IndexPopup() {
       return {
         websiteCount: 0,
         dataSize: "0 KB",
-        lastUpdated: "Never"
+        lastUpdated: "Never",
+        isReportReady: false
       }
     }
 
     const websiteCount = Object.keys(collectedData.websites).length
-    const dataSize = `~${Math.round(JSON.stringify(collectedData).length / 1024)} KB`
+    // dataSizeInBytes is now updated in loadCollectedData
+    const displayDataSize = `~${Math.round(dataSizeInBytes / 1024)} KB`
     const lastUpdated = new Date(collectedData.lastUpdated).toLocaleString()
+    const isReportReady =
+      dataSizeInBytes >= DATA_SIZE_THRESHOLD_BYTES && !!userEmail
 
-    return { websiteCount, dataSize, lastUpdated }
+    return {
+      websiteCount,
+      dataSize: displayDataSize,
+      lastUpdated,
+      isReportReady
+    }
   }
 
   /**
@@ -293,6 +334,47 @@ function IndexPopup() {
       .slice(0, 5)
   }
 
+  // New function to handle onboarding form submission
+  const handleOnboardingSubmit = async () => {
+    if (!onboardingEmailInput || !/\S+@\S+\.\S+/.test(onboardingEmailInput)) {
+      alert("Please enter a valid email address.")
+      return
+    }
+    try {
+      const storage = new Storage()
+      await storage.set(USER_EMAIL_KEY, onboardingEmailInput)
+      await storage.set(ONBOARDING_COMPLETE_KEY, true)
+      setUserEmail(onboardingEmailInput)
+      setShowOnboarding(false)
+    } catch (error) {
+      console.error("Error saving email:", error)
+      alert("Failed to save email. Please try again.")
+    }
+  }
+
+  // New function to handle report generation
+  const handleGenerateReport = () => {
+    if (!userEmail) {
+      alert("Email not found. Please complete onboarding.")
+      return
+    }
+    if (dataSizeInBytes < DATA_SIZE_THRESHOLD_BYTES) {
+      alert(
+        `Please collect at least ${DATA_SIZE_THRESHOLD_MB}MB of data to generate a report.`
+      )
+      return
+    }
+
+    try {
+      const cipheredEmail = btoa(userEmail) // Basic Base64 encoding
+      const reportUrl = `https://www.vael.ai/anonymous-user-report?email=${cipheredEmail}`
+      window.open(reportUrl, "_blank")
+    } catch (error) {
+      console.error("Error generating report URL:", error)
+      alert("Failed to generate report link.")
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-4 w-[400px] h-[550px] flex items-center justify-center">
@@ -301,11 +383,48 @@ function IndexPopup() {
     )
   }
 
-  const { websiteCount, dataSize, lastUpdated } = getDataStats()
+  const { websiteCount, dataSize, lastUpdated, isReportReady } = getDataStats()
   const recentWebsites = getRecentWebsites()
 
+  // Conditional rendering for onboarding
+  if (showOnboarding) {
+    return (
+      <div className="p-4 w-[400px] h-[550px] flex flex-col items-center justify-center">
+        <Card className="w-full max-w-sm shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-center text-lg">
+              Welcome to Vael AI
+            </CardTitle>
+            <CardDescription className="text-center text-sm">
+              Enter your email to enable personalized report generation and
+              unlock full features.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <input
+              type="email"
+              placeholder="your@email.com"
+              value={onboardingEmailInput}
+              onChange={(e) => setOnboardingEmailInput(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+            />
+            <Button
+              onClick={handleOnboardingSubmit}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+              Continue & Start Collecting
+            </Button>
+            <p className="text-xs text-center text-gray-500">
+              Your email is used solely for report access and is kept
+              confidential.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
-    <div className="p-4 pb-8 w-[400px] h-[550px] flex flex-col">
+    <div className="p-4 pb-8 w-[400px] h-[550px] flex flex-col bg-white dark:bg-slate-900 border border-transparent rounded-lg">
       <div className="flex items-center justify-between mb-3">
         <h1 className="flex items-center text-xl font-bold">
           Vael AI Context Bank
@@ -369,7 +488,7 @@ function IndexPopup() {
             <h3 className="text-sm font-medium">Currently Collecting:</h3>
           </div>
 
-          <div className="pb-3 mb-3 border-b border-gray-100">
+          <div className="pb-3 mb-3">
             <div className="grid grid-cols-2 gap-1">
               {config?.collectPageMetadata && (
                 <div className="px-2 py-1 text-xs text-blue-700 rounded-md bg-blue-50">
@@ -437,15 +556,15 @@ function IndexPopup() {
           <Accordion
             type="single"
             collapsible
-            className="w-full overflow-auto max-h-[280px]"
+            className="w-full overflow-auto max-h-[280px] border-b-0"
             defaultValue="general">
             <AccordionItem value="general">
               <AccordionTrigger className="py-2 text-sm font-medium">
                 General Collection:
               </AccordionTrigger>
-              <AccordionContent>
-                <div className="pl-1 space-y-3">
-                  <div className="flex items-center justify-between">
+              <AccordionContent className="pt-0 border-t-0">
+                <div className="pl-1 pt-0 border-t-0">
+                  <div className="flex items-center justify-between border-b-0 border-t-0">
                     <div>
                       <label className="text-sm font-medium">
                         Page Metadata:
@@ -468,7 +587,7 @@ function IndexPopup() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between border-b-0 border-t-0">
                     <div>
                       <label className="text-sm font-medium">
                         User Interactions:
@@ -491,7 +610,7 @@ function IndexPopup() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between border-b-0 border-t-0">
                     <div>
                       <label className="text-sm font-medium">
                         Device Information:
@@ -512,7 +631,7 @@ function IndexPopup() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between border-b-0 border-t-0">
                     <div>
                       <label className="text-sm font-medium">
                         Page Content:
@@ -540,9 +659,9 @@ function IndexPopup() {
               <AccordionTrigger className="py-2 text-sm font-medium">
                 Domain-Specific Data:
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className="pt-0 border-t-0">
                 <div className="pl-1 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between border-b-0 border-t-0">
                     <div>
                       <label className="text-sm font-medium">
                         E-commerce Data:
@@ -563,7 +682,7 @@ function IndexPopup() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between border-b-0 border-t-0">
                     <div>
                       <label className="text-sm font-medium">
                         Travel Data:
@@ -584,7 +703,7 @@ function IndexPopup() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between border-b-0 border-t-0">
                     <div>
                       <label className="text-sm font-medium">
                         Productivity Data:
@@ -614,9 +733,9 @@ function IndexPopup() {
               <AccordionTrigger className="py-2 text-sm font-medium">
                 Browser Activity:
               </AccordionTrigger>
-              <AccordionContent>
+              <AccordionContent className="pt-0 border-t-0">
                 <div className="pl-1 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between border-b-0 border-t-0">
                     <div>
                       <label className="text-sm font-medium">
                         Tab & Window Activity:
@@ -632,7 +751,7 @@ function IndexPopup() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between border-b-0 border-t-0">
                     <div>
                       <label className="text-sm font-medium">
                         Extension Analytics:
@@ -676,6 +795,29 @@ function IndexPopup() {
               Clear All Data
             </Button>
           </div>
+
+          {/* Report Generation Button - ADDED */}
+          <Button
+            size="sm"
+            variant="default"
+            onClick={handleGenerateReport}
+            disabled={!isReportReady}
+            className={`w-full text-sm h-9 mt-2 ${
+              isReportReady
+                ? "bg-blue-600 hover:bg-blue-700"
+                : "bg-gray-400 cursor-not-allowed"
+            }`}>
+            Generate Report
+          </Button>
+          {!isReportReady && (
+            <p className="mt-1 text-xs text-center text-gray-500">
+              {!userEmail
+                ? "Email required for reports."
+                : `Collect ${DATA_SIZE_THRESHOLD_MB}MB for reports (Current: ${Math.round(
+                    dataSizeInBytes / (1024 * 1024)
+                  )}MB)`}
+            </p>
+          )}
 
           <div className="pb-2 mt-2 border-b">
             <div className="flex items-baseline justify-between">

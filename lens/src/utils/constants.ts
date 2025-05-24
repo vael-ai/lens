@@ -21,7 +21,7 @@ export const WEB_APP_URL_PRODUCTION = "https://view.lens.vael.ai" // Or your pro
 export const CHECK_DATA_SIZE_ALARM_NAME = "checkDataSizeAlarm"
 
 // Other constants
-export const DATA_SIZE_THRESHOLD_MB = 10
-export const DATA_SIZE_THRESHOLD_BYTES = DATA_SIZE_THRESHOLD_MB * 1024 * 1024
-export const MAX_DATA_COLLECTION_MB = 150
+export const DATA_SIZE_THRESHOLD_KB = 10
+export const DATA_SIZE_THRESHOLD_BYTES = DATA_SIZE_THRESHOLD_KB * 1024
+export const MAX_DATA_COLLECTION_MB = 1
 export const MAX_DATA_COLLECTION_BYTES = MAX_DATA_COLLECTION_MB * 1024 * 1024

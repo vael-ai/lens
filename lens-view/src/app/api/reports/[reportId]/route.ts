@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import client from "@/lib/mongo/mongodb";
+import clientPromise from "@/lib/mongo/mongodb";
 import { z } from "zod";
+
+// No caching for now
 
 const paramsSchema = z.object({
     reportId: z.string().uuid("Invalid UUID format"),
 });
 
-export async function GET(request: NextRequest, { params }: { params: { reportId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ reportId: string }> }) {
     try {
-        const { reportId } = paramsSchema.parse(params);
+        const resolvedParams = await params;
+        const { reportId } = paramsSchema.parse(resolvedParams);
 
-        await client.connect();
-        const db = client.db("lens-vael");
+        // Direct MongoDB query
+        const client = await clientPromise;
+        const db = client.db("lens");
         const reportsCollection = db.collection("reports");
-
         const reportDoc = await reportsCollection.findOne({ reportId });
 
         if (!reportDoc) {
@@ -29,18 +32,23 @@ export async function GET(request: NextRequest, { params }: { params: { reportId
                         reportDoc.status === "processing"
                             ? "Report is still being processed"
                             : "Report processing failed",
+                    createdAt: reportDoc.createdAt?.toISOString() || null,
                 },
                 { status: 202 }
             );
         }
 
+        // Serialize MongoDB data to plain objects for Client Components
+        // Explicitly exclude MongoDB-specific fields like _id
+        const { _id, ...cleanDoc } = reportDoc;
+
         return NextResponse.json({
             success: true,
-            report: reportDoc.report,
-            reportId,
-            email: reportDoc.email,
-            createdAt: reportDoc.createdAt,
-            completedAt: reportDoc.completedAt,
+            report: cleanDoc.report,
+            reportId: cleanDoc.reportId,
+            email: cleanDoc.email,
+            createdAt: cleanDoc.createdAt?.toISOString() || null,
+            completedAt: cleanDoc.completedAt?.toISOString() || null,
         });
     } catch (error) {
         console.error("Error retrieving report:", error);
@@ -50,7 +58,5 @@ export async function GET(request: NextRequest, { params }: { params: { reportId
         }
 
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-    } finally {
-        await client.close();
     }
 }

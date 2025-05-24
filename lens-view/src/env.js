@@ -9,7 +9,7 @@ export const env = createEnv({
     server: {
         NODE_ENV: z.enum(["development", "test", "production"]),
         MONGODB_URI: z.string().min(1),
-        GEMINI_API_KEY: z.string().min(1),
+        GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1),
     },
 
     /**
@@ -28,7 +28,7 @@ export const env = createEnv({
     runtimeEnv: {
         NODE_ENV: process.env.NODE_ENV,
         MONGODB_URI: process.env.MONGODB_URI,
-        GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+        GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
         // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
     },
     /**

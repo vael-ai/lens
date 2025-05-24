@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import client from "@/lib/mongo/mongodb";
+import clientPromise from "@/lib/mongo/mongodb";
+
+// Email saving should not be cached as each request is unique
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
     try {
@@ -11,8 +14,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Valid email address is required" }, { status: 400 });
         }
 
-        // Connect to MongoDB
-        await client.connect();
+        // Get MongoDB client from connection promise
+        const client = await clientPromise;
         const db = client.db("lens");
         const collection = db.collection("emails");
 
@@ -37,7 +40,5 @@ export async function POST(request: NextRequest) {
     } catch (error) {
         console.error("Error saving email:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-    } finally {
-        await client.close();
     }
 }

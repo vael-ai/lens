@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { z } from "zod";
-import client from "@/lib/mongo/mongodb";
+import clientPromise from "@/lib/mongo/mongodb";
 import { decodeEmail, isValidEncodedEmail } from "@/lib/email-encoder";
+
+// Configure caching for report generation
+export const revalidate = 300; // Revalidate every 5 minutes
 
 // Structured output schema for report generation
 const reportSchema = z.object({
@@ -90,9 +93,10 @@ const reportSchema = z.object({
     }),
 });
 
-export async function POST(request: NextRequest, { params }: { params: { slug: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
     try {
-        const { slug } = params;
+        const resolvedParams = await params;
+        const { slug } = resolvedParams;
 
         // Validate and decode email from slug
         if (!isValidEncodedEmail(slug)) {
@@ -139,8 +143,8 @@ ${JSON.stringify(userData, null, 2)}
         });
 
         // Store the generated report in MongoDB
-        await client.connect();
-        const db = client.db("lens-vael");
+        const client = await clientPromise;
+        const db = client.db("lens");
         const reportsCollection = db.collection("reports");
 
         const reportDoc = {
@@ -161,15 +165,14 @@ ${JSON.stringify(userData, null, 2)}
     } catch (error) {
         console.error("Error generating report:", error);
         return NextResponse.json({ error: "Failed to generate report" }, { status: 500 });
-    } finally {
-        await client.close();
     }
 }
 
 // GET endpoint to retrieve existing report
-export async function GET(request: NextRequest, { params }: { params: { slug: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
     try {
-        const { slug } = params;
+        const resolvedParams = await params;
+        const { slug } = resolvedParams;
 
         if (!isValidEncodedEmail(slug)) {
             return NextResponse.json({ error: "Invalid user identifier" }, { status: 400 });
@@ -177,8 +180,8 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
 
         const email = decodeEmail(slug);
 
-        await client.connect();
-        const db = client.db("lens-vael");
+        const client = await clientPromise;
+        const db = client.db("lens");
         const reportsCollection = db.collection("reports");
 
         const reportDoc = await reportsCollection.findOne(
@@ -198,7 +201,5 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
     } catch (error) {
         console.error("Error retrieving report:", error);
         return NextResponse.json({ error: "Failed to retrieve report" }, { status: 500 });
-    } finally {
-        await client.close();
     }
 }

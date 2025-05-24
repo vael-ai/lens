@@ -511,18 +511,27 @@ const CollectionIndicator = () => {
         // Set up unload handler
         window.addEventListener("beforeunload", handleBeforeUnload)
 
-        // Periodic update of tab activity (every 30 seconds)
+        // Periodic update of tab activity (every 30 seconds) - only if there's meaningful activity
         const activityInterval = setInterval(() => {
           try {
             const activityData = tabTracker.getData()
-            updateTabActivity(window.location.href, activityData).catch(
-              (error) => {
-                warnNonContextError(
-                  error,
-                  "Error updating periodic tab activity"
-                )
-              }
-            )
+
+            // Only update if there's meaningful activity since last update
+            const hasActivity =
+              activityData.focusTime > 5000 || // More than 5 seconds of focus
+              activityData.activationCount > 0 || // User activated/clicked on tab
+              activityData.visibilityEvents.length > 0 // Visibility changes
+
+            if (hasActivity) {
+              updateTabActivity(window.location.href, activityData).catch(
+                (error) => {
+                  warnNonContextError(
+                    error,
+                    "Error updating periodic tab activity"
+                  )
+                }
+              )
+            }
           } catch (error) {
             warnNonContextError(
               error,

@@ -25,7 +25,8 @@ import {
 } from "./utils/api"
 import {
   DATA_SIZE_THRESHOLD_BYTES,
-  DATA_SIZE_THRESHOLD_MB,
+  DATA_SIZE_THRESHOLD_KB,
+  MAX_DATA_COLLECTION_BYTES,
   ONBOARDING_COMPLETE_KEY,
   USER_EMAIL_KEY
 } from "./utils/constants"
@@ -79,6 +80,10 @@ function IndexPopup(): JSX.Element {
   const [dataSize, setDataSize] = useState<string>("")
   const [lastUpdated, setLastUpdated] = useState<string>("")
   const [isReportReady, setIsReportReady] = useState<boolean>(false)
+  const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false)
+  const [lastReportDataSize, setLastReportDataSize] = useState<number>(0)
+  const [canGenerateNewReport, setCanGenerateNewReport] =
+    useState<boolean>(true)
 
   // Define the boolean config keys to display in settings with color coding
   const BOOLEAN_USER_CONFIG_KEYS = [
@@ -90,6 +95,28 @@ function IndexPopup(): JSX.Element {
     { key: "collectDeviceInfo", color: "teal" },
     { key: "collectAnalytics", color: "green" }
   ] as const
+
+  /**
+   * Calculates the exact data size as it would be exported
+   * This matches the format used by exportCollectedData (with pretty printing)
+   * @param data - The collected data to calculate size for
+   * @returns Size in bytes matching the exported format
+   */
+  const calculateExactExportSize = (data: CollectedData | null): number => {
+    if (!data) return 0
+    // Use the same formatting as exportCollectedData: JSON.stringify(data, null, 2)
+    const exactSize = JSON.stringify(data, null, 2).length
+
+    // Debug logging to verify accuracy (can be removed in production)
+    if (process.env.NODE_ENV === "development") {
+      const compactSize = JSON.stringify(data).length
+      console.log(
+        `[Size Debug] Compact: ${(compactSize / 1024).toFixed(2)}KB, Formatted: ${(exactSize / 1024).toFixed(2)}KB`
+      )
+    }
+
+    return exactSize
+  }
 
   // Load user configuration
   useEffect(() => {
@@ -184,32 +211,31 @@ function IndexPopup(): JSX.Element {
       setDataLoading(true)
       const data = await getAllCollectedData()
       setCollectedData(data)
-      // Calculate and set data size in bytes
-      const rawDataSizeInBytes = data ? JSON.stringify(data).length : 0
-      setDataSizeInBytes(rawDataSizeInBytes)
+
+      // Calculate exact export size (matches exportCollectedData format)
+      const exactExportSizeInBytes = calculateExactExportSize(data)
+      setDataSizeInBytes(exactExportSizeInBytes)
+
       const websitesArray = Object.values(data.websites || {})
       const websiteCount = websitesArray.length
-      let currentTotalSize = 0
-      if (data.websites && typeof data.websites === "object") {
-        Object.values(data.websites).forEach((siteData) => {
-          if (siteData) {
-            currentTotalSize += JSON.stringify(siteData).length
-          }
-        })
-      }
-      const calculatedDataSizeInBytes = currentTotalSize
       const dataSizeFormatted =
-        (calculatedDataSizeInBytes / 1024).toFixed(2) + " KB"
+        (exactExportSizeInBytes / 1024).toFixed(2) + " KB"
       const lastUpdatedTimestamp = data.lastUpdated || Date.now()
       const lastUpdatedFormatted = new Date(
         lastUpdatedTimestamp
       ).toLocaleString()
-      const reportIsReady =
-        calculatedDataSizeInBytes >= DATA_SIZE_THRESHOLD_BYTES
+      const reportIsReady = exactExportSizeInBytes >= DATA_SIZE_THRESHOLD_BYTES
+
+      // Check if user can generate a new report (if data has grown by at least 10KB since last report)
+      const dataSizeGrowth = exactExportSizeInBytes - lastReportDataSize
+      const canGenerateNew =
+        lastReportDataSize === 0 || dataSizeGrowth >= DATA_SIZE_THRESHOLD_BYTES
+
       setWebsiteCount(websiteCount)
       setDataSize(dataSizeFormatted)
       setLastUpdated(lastUpdatedFormatted)
       setIsReportReady(reportIsReady)
+      setCanGenerateNewReport(canGenerateNew)
     } catch (error) {
       console.error("Error loading collected data:", error)
       setCollectedData(null)
@@ -300,6 +326,12 @@ function IndexPopup(): JSX.Element {
   const handleExportData = async () => {
     try {
       const dataStr = await exportCollectedData()
+
+      // Log actual export size for verification
+      console.log(
+        `[Export Debug] Actual export size: ${(dataStr.length / 1024).toFixed(2)}KB`
+      )
+
       const dataBlob = new Blob([dataStr], { type: "application/json" })
       const url = URL.createObjectURL(dataBlob)
 
@@ -336,6 +368,12 @@ function IndexPopup(): JSX.Element {
       try {
         await clearAllCollectedData()
         setCollectedData(null)
+        // Reset report generation state
+        setLastReportDataSize(0)
+        setCanGenerateNewReport(true)
+        setIsGeneratingReport(false)
+        // Reload data to update UI
+        loadCollectedData()
       } catch (error) {
         console.error("Error clearing data:", error)
       }
@@ -477,14 +515,6 @@ function IndexPopup(): JSX.Element {
       alert("Email not found. Please complete onboarding.")
       return
     }
-    if (dataSizeInBytes < DATA_SIZE_THRESHOLD_BYTES) {
-      alert(
-        `Please collect at least ${DATA_SIZE_THRESHOLD_MB}MB of data to generate a report.`
-      )
-      return
-    }
-
-    const reportId = crypto.randomUUID()
 
     // Ensure userEmail and collectedData are available (already in component state)
     if (!userEmail || !collectedData) {
@@ -493,6 +523,37 @@ function IndexPopup(): JSX.Element {
       )
       return
     }
+
+    // Recalculate exact export size to ensure accuracy
+    const exactExportSize = calculateExactExportSize(collectedData)
+
+    if (exactExportSize < DATA_SIZE_THRESHOLD_BYTES) {
+      alert(
+        `Please collect at least ${DATA_SIZE_THRESHOLD_KB}KB of data to generate a report.`
+      )
+      return
+    }
+
+    if (exactExportSize > MAX_DATA_COLLECTION_BYTES) {
+      alert(
+        `Data size is too large (max 1MB allowed). Please clear some data and try again.`
+      )
+      return
+    }
+
+    // Check if user can generate a new report
+    if (!canGenerateNewReport) {
+      const requiredGrowth = DATA_SIZE_THRESHOLD_KB
+      alert(
+        `You need to collect at least ${requiredGrowth}KB more data since your last report to generate a new one.`
+      )
+      return
+    }
+
+    // Set loading state and disable button immediately
+    setIsGeneratingReport(true)
+
+    const reportId = crypto.randomUUID()
 
     // Always submit data to server (development or production)
     try {
@@ -519,20 +580,28 @@ function IndexPopup(): JSX.Element {
       const result = await response.json()
 
       if (result.success) {
+        // Mark that a report was generated with this data size
+        setLastReportDataSize(exactExportSize)
+        setCanGenerateNewReport(false)
+
         const reportsUrl = USE_LOCAL_API
           ? "http://localhost:3000"
           : "https://lens.vael.ai"
         chrome.tabs.create({
           url: `${reportsUrl}/reports/${reportId}`
         })
+
+        // Loading state will be cleared when user navigates away or closes popup
       } else {
         console.error("Failed to submit data:", result.error)
+        setIsGeneratingReport(false) // Reset loading state on error
         alert(
           `Failed to submit data for report: ${result.error || "Unknown error"}`
         )
       }
     } catch (error) {
       console.error("Error generating report:", error)
+      setIsGeneratingReport(false) // Reset loading state on error
       if (error instanceof Error) {
         alert(`An error occurred while generating the report: ${error.message}`)
       } else {
@@ -1015,7 +1084,47 @@ function IndexPopup(): JSX.Element {
                 </div>
 
                 <div className="p-3 border rounded-lg bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50">
-                  {isReportReady ? (
+                  {!isReportReady ? (
+                    <div className="flex items-center mb-2 text-orange-600 dark:text-orange-400">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-4 h-4 mr-1"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <p className="text-xs font-medium">
+                        Collect at least {DATA_SIZE_THRESHOLD_KB}KB of data to
+                        generate a report
+                      </p>
+                    </div>
+                  ) : !canGenerateNewReport ? (
+                    <div className="flex items-center mb-2 text-blue-600 dark:text-blue-400">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-4 h-4 mr-1"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <p className="text-xs font-medium">
+                        Collect {DATA_SIZE_THRESHOLD_KB}KB more data to generate
+                        another report
+                      </p>
+                    </div>
+                  ) : (
                     <div className="flex items-center mb-2 text-green-600 dark:text-green-400">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -1034,33 +1143,18 @@ function IndexPopup(): JSX.Element {
                         Report is ready to generate
                       </p>
                     </div>
-                  ) : (
-                    <div className="flex items-center mb-2 text-orange-600 dark:text-orange-400">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="w-4 h-4 mr-1"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      <p className="text-xs font-medium">
-                        Collect at least {DATA_SIZE_THRESHOLD_MB}MB of data to
-                        generate a report
-                      </p>
-                    </div>
                   )}
 
                   <Button
                     onClick={handleGenerateReport}
-                    className="w-full h-9 text-xs mb-2 font-medium bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 dark:from-purple-500 dark:to-indigo-500 dark:hover:from-purple-600 dark:hover:to-indigo-600 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-md text-white"
-                    disabled={dataLoading || !isReportReady}>
-                    {dataLoading ? (
+                    className="w-full h-9 text-xs mb-2 font-medium bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 dark:from-purple-500 dark:to-indigo-500 dark:hover:from-purple-600 dark:hover:to-indigo-600 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-md text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    disabled={
+                      dataLoading ||
+                      !isReportReady ||
+                      isGeneratingReport ||
+                      !canGenerateNewReport
+                    }>
+                    {isGeneratingReport ? (
                       <span className="flex items-center">
                         <svg
                           className="w-4 h-4 mr-2 -ml-1 text-white animate-spin"
@@ -1081,6 +1175,29 @@ function IndexPopup(): JSX.Element {
                         </svg>
                         Generating Report...
                       </span>
+                    ) : dataLoading ? (
+                      <span className="flex items-center">
+                        <svg
+                          className="w-4 h-4 mr-2 -ml-1 text-white animate-spin"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24">
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Loading Data...
+                      </span>
+                    ) : !canGenerateNewReport ? (
+                      "Collect More Data"
                     ) : (
                       "Generate Report"
                     )}

@@ -62,9 +62,12 @@ interface ReportStatus {
     reportId: string;
     status: "processing" | "completed" | "failed";
     progressPercent: number;
+    currentStage?: string;
     createdAt: string;
     completedAt?: string;
+    lastUpdated?: string;
     error?: string;
+    errorType?: string;
 }
 
 export default function ReportPage() {
@@ -76,8 +79,10 @@ export default function ReportPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const pollStartTime = useRef<number>(Date.now());
 
-    // Poll for status updates
+    // Poll for status updates and load completed reports
     useEffect(() => {
         const checkStatus = async () => {
             try {
@@ -85,29 +90,43 @@ export default function ReportPage() {
                 const statusData = await response.json();
 
                 if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error("Report not found");
+                    }
                     throw new Error(statusData.error || "Failed to check status");
                 }
 
                 setStatus(statusData);
 
-                // If completed, fetch the report data
+                // If completed, fetch the report data and STOP polling immediately
                 if (statusData.status === "completed") {
+                    // Stop polling before fetching report to prevent race conditions
+                    if (pollIntervalRef.current) {
+                        clearInterval(pollIntervalRef.current);
+                        pollIntervalRef.current = null;
+                    }
+                    if (pollTimeoutRef.current) {
+                        clearTimeout(pollTimeoutRef.current);
+                        pollTimeoutRef.current = null;
+                    }
+
                     const reportResponse = await fetch(`/api/reports/${reportId}`);
                     const reportData = await reportResponse.json();
 
                     if (reportResponse.ok) {
                         setReport(reportData.report);
-                        if (pollIntervalRef.current) {
-                            clearInterval(pollIntervalRef.current);
-                            pollIntervalRef.current = null;
-                        }
                     }
                 } else if (statusData.status === "failed") {
-                    setError(statusData.error || "Report processing failed");
+                    // Stop polling immediately for failed reports
                     if (pollIntervalRef.current) {
                         clearInterval(pollIntervalRef.current);
                         pollIntervalRef.current = null;
                     }
+                    if (pollTimeoutRef.current) {
+                        clearTimeout(pollTimeoutRef.current);
+                        pollTimeoutRef.current = null;
+                    }
+                    setError(statusData.error || "Report processing failed");
                 }
             } catch (err) {
                 setError(err instanceof Error ? err.message : "Unknown error occurred");
@@ -115,29 +134,124 @@ export default function ReportPage() {
                     clearInterval(pollIntervalRef.current);
                     pollIntervalRef.current = null;
                 }
+                if (pollTimeoutRef.current) {
+                    clearTimeout(pollTimeoutRef.current);
+                    pollTimeoutRef.current = null;
+                }
             } finally {
                 setLoading(false);
             }
         };
 
-        // Initial check
-        void checkStatus();
+        // Start immediate status check
+        const initializeReport = async () => {
+            pollStartTime.current = Date.now();
+            await checkStatus();
 
-        // Poll every 2 seconds while processing
-        pollIntervalRef.current = setInterval(() => {
-            void checkStatus();
-        }, 2000);
+            // Only start polling if report is still processing
+            if (status?.status === "processing" || loading) {
+                startPolling();
+            }
+        };
+
+        // More frequent polling with shorter intervals for better responsiveness
+        const startPolling = () => {
+            // Don't start if already polling or if complete/failed
+            if (pollIntervalRef.current || status?.status === "completed" || status?.status === "failed") {
+                return;
+            }
+
+            // Set up polling timeout (5 minutes max)
+            pollTimeoutRef.current = setTimeout(
+                () => {
+                    if (pollIntervalRef.current) {
+                        clearInterval(pollIntervalRef.current);
+                        pollIntervalRef.current = null;
+                    }
+                    setError("Report processing is taking longer than expected. Please try again later.");
+                },
+                5 * 60 * 1000
+            ); // 5 minutes
+
+            // Poll every 1-2 seconds for more responsive feedback
+            const baseInterval = 1000; // 1 second base
+            const randomOffset = Math.random() * 1000; // 0-1 second random offset
+
+            pollIntervalRef.current = setInterval(async () => {
+                await checkStatus();
+
+                // Stop polling if status changed to completed or failed
+                if (status?.status === "completed" || status?.status === "failed") {
+                    if (pollIntervalRef.current) {
+                        clearInterval(pollIntervalRef.current);
+                        pollIntervalRef.current = null;
+                    }
+                    if (pollTimeoutRef.current) {
+                        clearTimeout(pollTimeoutRef.current);
+                        pollTimeoutRef.current = null;
+                    }
+                }
+            }, baseInterval + randomOffset);
+        };
+
+        void initializeReport();
 
         return () => {
             if (pollIntervalRef.current) {
                 clearInterval(pollIntervalRef.current);
                 pollIntervalRef.current = null;
             }
+            if (pollTimeoutRef.current) {
+                clearTimeout(pollTimeoutRef.current);
+                pollTimeoutRef.current = null;
+            }
         };
     }, [reportId]);
 
     // Loading state while processing
     if (loading || (status?.status === "processing" && !report)) {
+        const progress = status?.progressPercent || 0;
+
+        // Use real-time stage from API or fallback to progress-based stage
+        let currentStage = status?.currentStage || "Initializing...";
+        let stageDescription = "Setting up your report generation";
+
+        // Dynamic descriptions based on current stage or progress
+        if (status?.currentStage) {
+            // Use real-time stage descriptions
+            switch (status.currentStage) {
+                case "Initializing AI analysis":
+                    stageDescription = "Setting up AI models and preparing data analysis";
+                    break;
+                case "Processing browsing data":
+                    stageDescription = "Our AI is analyzing your browsing patterns and extracting insights";
+                    break;
+                case "Generating insights and visualizations":
+                    stageDescription = "Creating personalized insights and building interactive charts";
+                    break;
+                case "Finalizing report":
+                    stageDescription = "Applying final formatting and preparing your report";
+                    break;
+                case "Completed":
+                    stageDescription = "Your report is ready!";
+                    break;
+                default:
+                    stageDescription = "Processing your browsing data";
+            }
+        } else {
+            // Fallback progress-based descriptions
+            if (progress >= 10 && progress < 80) {
+                currentStage = "AI Analysis in Progress";
+                stageDescription = "Our AI is deeply analyzing your browsing patterns and generating insights";
+            } else if (progress >= 80 && progress < 95) {
+                currentStage = "Finalizing Report";
+                stageDescription = "Creating visualizations and formatting your personalized report";
+            } else if (progress >= 95) {
+                currentStage = "Almost Ready";
+                stageDescription = "Applying final touches and preparing your report";
+            }
+        }
+
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
                 <div className="flex items-center justify-center min-h-screen p-4">
@@ -145,26 +259,62 @@ export default function ReportPage() {
                         <CardHeader>
                             <CardTitle className="flex items-center space-x-2">
                                 <RefreshCw className="w-5 h-5 animate-spin" />
-                                <span>Generating Your Report</span>
+                                <span>{currentStage}</span>
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="text-center">
-                                <p className="mb-4 text-gray-600">Our AI is analyzing your browsing patterns...</p>
-                                <Progress value={status?.progressPercent || 0} className="mb-2" />
-                                <p className="text-sm text-gray-500">{status?.progressPercent || 0}% complete</p>
+                                <p className="mb-4 text-gray-600">{stageDescription}</p>
+                                <Progress value={progress} className="mb-2" />
+                                <p className="text-sm text-gray-500">{progress}% complete</p>
+                                {progress >= 95 && (
+                                    <p className="text-xs text-blue-600 mt-1 animate-pulse">
+                                        This usually takes just a few more seconds...
+                                    </p>
+                                )}
                             </div>
                             <div className="space-y-2 text-sm text-gray-600">
-                                <p>✅ Data received and validated</p>
-                                <p className={(status?.progressPercent ?? 0) >= 30 ? "text-blue-600" : ""}>
-                                    {(status?.progressPercent ?? 0) >= 30 ? "✅" : "⏳"} Processing browsing patterns
+                                <p className={progress >= 5 ? "text-green-600" : "text-blue-600"}>
+                                    {progress >= 5 ? "✅" : "⏳"} Data received and validated
                                 </p>
-                                <p className={(status?.progressPercent ?? 0) >= 60 ? "text-blue-600" : ""}>
-                                    {(status?.progressPercent ?? 0) >= 60 ? "✅" : "⏳"} Generating insights
+                                <p
+                                    className={
+                                        progress >= 15 ? "text-green-600" : progress >= 10 ? "text-blue-600" : ""
+                                    }
+                                >
+                                    {progress >= 15 ? "✅" : progress >= 10 ? "🔄" : "⏳"} Processing browsing patterns
                                 </p>
-                                <p className={(status?.progressPercent ?? 0) >= 90 ? "text-blue-600" : ""}>
-                                    {(status?.progressPercent ?? 0) >= 90 ? "✅" : "⏳"} Creating visualizations
+                                <p
+                                    className={
+                                        progress >= 50 ? "text-green-600" : progress >= 25 ? "text-blue-600" : ""
+                                    }
+                                >
+                                    {progress >= 50 ? "✅" : progress >= 25 ? "🔄" : "⏳"} Generating AI insights
                                 </p>
+                                <p
+                                    className={
+                                        progress >= 85 ? "text-green-600" : progress >= 80 ? "text-blue-600" : ""
+                                    }
+                                >
+                                    {progress >= 85 ? "✅" : progress >= 80 ? "🔄" : "⏳"} Creating visualizations
+                                </p>
+                                <p
+                                    className={
+                                        progress >= 98 ? "text-green-600" : progress >= 95 ? "text-blue-600" : ""
+                                    }
+                                >
+                                    {progress >= 98 ? "✅" : progress >= 95 ? "🔄" : "⏳"} Finalizing report
+                                </p>
+                            </div>
+                            <div className="text-xs text-gray-400 text-center pt-2 border-t space-y-1">
+                                {status?.createdAt && (
+                                    <div>Started: {new Date(status.createdAt).toLocaleTimeString()}</div>
+                                )}
+                                {status?.lastUpdated && (
+                                    <div className="text-blue-500">
+                                        Last updated: {new Date(status.lastUpdated).toLocaleTimeString()}
+                                    </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -175,18 +325,57 @@ export default function ReportPage() {
 
     // Error state
     if (error || status?.status === "failed") {
+        const getErrorMessage = () => {
+            if (status?.error) {
+                return status.error;
+            }
+            return error || "An unexpected error occurred";
+        };
+
+        const getErrorTitle = () => {
+            if (status?.errorType === "ai_token_limit") {
+                return "Data Too Large";
+            } else if (status?.errorType === "rate_limit") {
+                return "Service Temporarily Unavailable";
+            }
+            return "Processing Failed";
+        };
+
+        const canRetry = status?.errorType === "rate_limit" || status?.errorType === "general";
+
         return (
             <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-to-br from-gray-50 to-gray-100">
                 <Card className="max-w-md mx-auto">
                     <CardContent className="pt-6">
                         <div className="flex items-center mb-4 space-x-2 text-red-600">
                             <AlertCircle className="w-5 h-5" />
-                            <span className="font-medium">Error</span>
+                            <span className="font-medium">{getErrorTitle()}</span>
                         </div>
-                        <p className="mb-4 text-gray-600">{error || status?.error}</p>
-                        <Button onClick={() => window.location.reload()} className="w-full">
-                            Try Again
-                        </Button>
+                        <p className="mb-4 text-gray-600">{getErrorMessage()}</p>
+
+                        {status?.errorType === "ai_token_limit" && (
+                            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p className="text-sm text-blue-800">
+                                    <strong>Tip:</strong> Try clearing some browsing data in the extension or wait for
+                                    more optimized processing.
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <Button onClick={() => window.location.reload()} className="w-full">
+                                {canRetry ? "Try Again" : "Refresh Page"}
+                            </Button>
+                            <Button variant="outline" onClick={() => window.close()} className="w-full">
+                                Close Tab
+                            </Button>
+                        </div>
+
+                        {status?.lastUpdated && (
+                            <div className="text-xs text-gray-400 text-center pt-3 border-t mt-4">
+                                Failed at: {new Date(status.lastUpdated).toLocaleTimeString()}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>

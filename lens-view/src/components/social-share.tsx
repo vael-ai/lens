@@ -48,7 +48,7 @@ export function SocialShare({ report }: SocialShareProps) {
         ];
 
         if (platform === "twitter") {
-            return `Just got my browsing intelligence report from @VaelAI! 🚀\n\n${insights.slice(0, 4).join("\n")}\n\nDiscover your digital personality: lens.vael.ai\n\n#BrowsingIntelligence #VaelAI #DigitalPersonality`;
+            return `Just got my browsing intelligence report from @Vael_AI! 🚀\n\n${insights.slice(0, 4).join("\n")}\n\nDiscover your digital personality: lens.vael.ai\n\n#BrowsingIntelligence #VaelAI #DigitalPersonality`;
         } else {
             return `I just discovered my browsing intelligence with Vael AI! Here are some fascinating insights about my digital behavior:\n\n${insights.join("\n")}\n\nIt's amazing what AI can reveal about our browsing patterns. Check out your own digital personality at lens.vael.ai\n\n#DigitalAnalytics #AI #BrowsingIntelligence #VaelAI`;
         }
@@ -105,7 +105,7 @@ export function SocialShare({ report }: SocialShareProps) {
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                    <Share2 className="h-5 w-5" />
+                    <Share2 className="w-5 h-5" />
                     <span>Share Your Digital Insights</span>
                 </CardTitle>
             </CardHeader>
@@ -114,10 +114,10 @@ export function SocialShare({ report }: SocialShareProps) {
                     {/* Fun Facts */}
                     {funFacts.length > 0 && (
                         <div>
-                            <h4 className="font-medium mb-3">✨ Share-worthy highlights:</h4>
+                            <h4 className="mb-3 font-medium">✨ Share-worthy highlights:</h4>
                             <div className="space-y-2">
                                 {funFacts.map((fact, index) => (
-                                    <Badge key={index} variant="outline" className="text-sm py-1 px-3">
+                                    <Badge key={index} variant="outline" className="px-3 py-1 text-sm">
                                         {fact}
                                     </Badge>
                                 ))}
@@ -126,8 +126,8 @@ export function SocialShare({ report }: SocialShareProps) {
                     )}
 
                     {/* Preview Text */}
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium mb-2">Preview (Twitter version):</h4>
+                    <div className="p-4 rounded-lg bg-gray-50">
+                        <h4 className="mb-2 font-medium">Preview (Twitter version):</h4>
                         <p className="text-sm text-gray-700 whitespace-pre-line">{generateShareText("twitter")}</p>
                     </div>
 
@@ -137,7 +137,7 @@ export function SocialShare({ report }: SocialShareProps) {
                             onClick={shareToTwitter}
                             className="flex items-center space-x-2 bg-black hover:bg-gray-800"
                         >
-                            <Twitter className="h-4 w-4" />
+                            <Twitter className="w-4 h-4" />
                             <span>Share on X</span>
                         </Button>
 
@@ -145,7 +145,7 @@ export function SocialShare({ report }: SocialShareProps) {
                             onClick={shareToLinkedIn}
                             className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700"
                         >
-                            <Linkedin className="h-4 w-4" />
+                            <Linkedin className="w-4 h-4" />
                             <span>Share on LinkedIn</span>
                         </Button>
 
@@ -154,13 +154,13 @@ export function SocialShare({ report }: SocialShareProps) {
                             variant="outline"
                             className="flex items-center space-x-2"
                         >
-                            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                             <span>{copied ? "Copied!" : "Copy Text"}</span>
                         </Button>
                     </div>
 
                     {/* Engagement Tip */}
-                    <div className="bg-blue-50 p-4 rounded-lg">
+                    <div className="p-4 rounded-lg bg-blue-50">
                         <p className="text-sm text-blue-800">
                             💡 <strong>Tip:</strong> Sharing your insights helps Vael AI reach more people and improve
                             our algorithms. Plus, your friends might discover something interesting about their own

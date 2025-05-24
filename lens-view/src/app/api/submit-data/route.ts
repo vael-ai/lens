@@ -206,12 +206,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Get request metadata for logging
+        // Get request metadata for logging (no IP collection for privacy)
         const headersList = await headers();
         const userAgent = headersList.get("user-agent") || "unknown";
-        const forwardedFor = headersList.get("x-forwarded-for");
-        const realIp = headersList.get("x-real-ip");
-        const ipAddress = forwardedFor?.split(",")[0] || realIp || "unknown";
 
         await client.connect();
         const db = client.db("lens-vael");
@@ -226,7 +223,6 @@ export async function POST(request: NextRequest) {
                     email,
                     registeredAt: new Date(),
                     source: "lens-extension",
-                    ipAddress,
                 },
             },
             { upsert: true }
@@ -241,7 +237,6 @@ export async function POST(request: NextRequest) {
             createdAt: new Date(),
             userDataSize: dataSize,
             userAgent,
-            ipAddress,
             report: null, // Will be populated after processing
         };
 

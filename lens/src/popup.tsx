@@ -434,23 +434,39 @@ function IndexPopup(): JSX.Element {
         // Still continue, UI has already updated
       }
 
-      // Try API call if needed
-      if (!USE_LOCAL_API) {
-        try {
-          fetch(`${API_BASE_URL}/api/save-email`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              email: emailToSave
-            })
-          }).catch((apiError) => {
-            console.error("API error:", apiError)
+      // Always send email to server (development or production)
+      try {
+        const serverUrl = USE_LOCAL_API
+          ? "http://localhost:3000"
+          : "https://lens.vael.ai"
+        console.log(
+          `Sending email to ${USE_LOCAL_API ? "development" : "production"} server:`,
+          emailToSave,
+          `(${serverUrl})`
+        )
+
+        fetch(`${serverUrl}/api/save-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            email: emailToSave
           })
-        } catch (apiError) {
-          console.error("Error preparing API call:", apiError)
-        }
+        })
+          .then((response) => response.json())
+          .then((result) => {
+            if (result.success) {
+              console.log("Email successfully saved to server:", result)
+            } else {
+              console.error("Server failed to save email:", result.error)
+            }
+          })
+          .catch((apiError) => {
+            console.error("API error saving email:", apiError)
+          })
+      } catch (apiError) {
+        console.error("Error preparing email API call:", apiError)
       }
     }, 0) // Schedule this for the next event loop
   }
@@ -478,66 +494,49 @@ function IndexPopup(): JSX.Element {
       return
     }
 
-    if (USE_LOCAL_API) {
-      // Development mode: Simulate report generation
+    // Always submit data to server (development or production)
+    try {
+      const serverUrl = USE_LOCAL_API
+        ? "http://localhost:3000"
+        : "https://lens.vael.ai"
       console.log(
-        `[DEV MODE] Simulating report generation for reportId: ${reportId}, email: ${userEmail}`
+        `Submitting data to ${USE_LOCAL_API ? "development" : "production"} server for report generation:`,
+        reportId
       )
-      alert(
-        `[DEV MODE] Simulating report generation. Opening report page for ID: ${reportId}`
-      )
-      try {
+
+      const response = await fetch(`${serverUrl}/api/submit-data`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          reportId: reportId,
+          email: userEmail,
+          userData: collectedData // Send the actual collected data object
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        const reportsUrl = USE_LOCAL_API
+          ? "http://localhost:3000"
+          : "https://lens.vael.ai"
         chrome.tabs.create({
-          url: `${REPORTS_BASE_URL}/reports/${reportId}` // REPORTS_BASE_URL will be http://localhost:3000 in dev mode
+          url: `${reportsUrl}/reports/${reportId}`
         })
-      } catch (error) {
-        console.error("[DEV MODE] Error opening simulated report page:", error)
-        if (error instanceof Error) {
-          alert(
-            `[DEV MODE] An error occurred while opening the simulated report page: ${error.message}`
-          )
-        } else {
-          alert(
-            "[DEV MODE] An unknown error occurred while opening the simulated report page."
-          )
-        }
+      } else {
+        console.error("Failed to submit data:", result.error)
+        alert(
+          `Failed to submit data for report: ${result.error || "Unknown error"}`
+        )
       }
-    } else {
-      // Production mode: Actual API call to submit data
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/submit-data`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            reportId: reportId,
-            email: userEmail,
-            userData: collectedData // Send the actual collected data object
-          })
-        })
-
-        const result = await response.json()
-
-        if (result.success) {
-          chrome.tabs.create({
-            url: `${REPORTS_BASE_URL}/reports/${reportId}`
-          })
-        } else {
-          console.error("Failed to submit data:", result.error)
-          alert(
-            `Failed to submit data for report: ${result.error || "Unknown error"}`
-          )
-        }
-      } catch (error) {
-        console.error("Error generating report:", error)
-        if (error instanceof Error) {
-          alert(
-            `An error occurred while generating the report: ${error.message}`
-          )
-        } else {
-          alert("An unknown error occurred while generating the report.")
-        }
+    } catch (error) {
+      console.error("Error generating report:", error)
+      if (error instanceof Error) {
+        alert(`An error occurred while generating the report: ${error.message}`)
+      } else {
+        alert("An unknown error occurred while generating the report.")
       }
     }
   }

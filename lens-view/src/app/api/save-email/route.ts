@@ -22,17 +22,11 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ message: "Email already registered", exists: true }, { status: 200 });
         }
 
-        // Get IP address from headers
-        const forwardedFor = request.headers.get("x-forwarded-for");
-        const realIp = request.headers.get("x-real-ip");
-        const ipAddress = forwardedFor?.split(",")[0] || realIp || "unknown";
-
-        // Save email with timestamp
+        // Save email with timestamp (no IP collection for privacy)
         const result = await collection.insertOne({
             email,
             registeredAt: new Date(),
             source: "lens-extension",
-            ipAddress,
         });
 
         return NextResponse.json({

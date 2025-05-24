@@ -5,28 +5,49 @@ import React from "react"
  * Master toggle that (in the future) will enable / disable data collection.
  * Currently rendered disabled because global on/off is not implemented.
  */
-interface MasterToggleProps {
+type MasterToggleProps = {
   enabled: boolean
-  // We can later pass an onChange callback when the feature is ready.
+  onToggle: () => void
 }
 
-const MasterToggle: React.FC<MasterToggleProps> = ({ enabled }) => {
+/**
+ * A master toggle component for the Lens by Vael AI extension.
+ * Controls the overall data collection functionality.
+ * When disabled, it visually indicates that all settings are disabled.
+ */
+const MasterToggle: React.FC<MasterToggleProps> = ({ enabled, onToggle }) => {
   return (
-    <div className="flex items-center justify-between p-3 mb-2 -mx-4 -mt-2 bg-slate-50 dark:bg-slate-800 rounded-t-lg border-b dark:border-slate-700">
-      <label
-        htmlFor="masterToggle"
-        className="text-sm font-medium text-slate-700 dark:text-slate-200">
-        Master Data Collection
-      </label>
-      <Switch
-        id="masterToggle"
-        checked={enabled}
-        className={
-          "data-[state=checked]:bg-[#938EEA] data-[state=unchecked]:bg-slate-300 dark:data-[state=unchecked]:bg-slate-600"
-        }
-        style={{ backgroundColor: "#938EEA" }}
-        disabled
-      />
+    <div className="flex items-center justify-between p-3 mb-2 -mx-4 -mt-2 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-slate-800 dark:to-purple-900/20 rounded-t-lg border-b border-purple-100 dark:border-purple-900/30 shadow-sm transition-all duration-300">
+      <div className="flex items-center gap-2">
+        <div
+          className={`w-2 h-2 rounded-full ${enabled ? "bg-green-400 animate-pulse" : "bg-red-400"}`}
+        />
+        <div>
+          <label
+            htmlFor="masterToggle"
+            className="text-sm font-medium text-slate-800 dark:text-slate-100">
+            Master Data Collection
+          </label>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400">
+            {enabled
+              ? "Collecting data according to settings"
+              : "All data collection paused"}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {!enabled && (
+          <span className="text-[10px] text-red-500 dark:text-red-400 font-medium animate-pulse">
+            OFF
+          </span>
+        )}
+        <Switch
+          id="masterToggle"
+          checked={enabled}
+          onCheckedChange={onToggle}
+          className="data-[state=checked]:bg-purple-600 dark:data-[state=checked]:bg-purple-500 data-[state=unchecked]:bg-red-400 dark:data-[state=unchecked]:bg-red-500 transition-colors duration-200 shadow-md"
+        />
+      </div>
     </div>
   )
 }

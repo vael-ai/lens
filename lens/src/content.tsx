@@ -1,4 +1,4 @@
-// Content script for Vael AI Context Bank
+// Content script for Lens by Vael AI Context Bank
 import cssText from "data-text:./main.css"
 import type { PlasmoCSConfig } from "plasmo"
 import { useEffect, useState } from "react"
@@ -21,8 +21,8 @@ import {
 } from "./utils/dataCollection"
 import { classifyCurrentPage } from "./utils/domainClassifier"
 import { generateUUID } from "./utils/helpers"
+import { sendMessage, type MessagePayload } from "./utils/messaging"
 import type { IconPayload, MessageNames } from "./utils/messaging"
-import { sendMessage } from "./utils/messaging"
 import { getUserConfig, isDomainBlacklisted } from "./utils/userPreferences"
 import type { UserConfig } from "./utils/userPreferences"
 
@@ -122,7 +122,10 @@ interface CollectionStatus {
  * @param name - The message name/type to send
  * @param body - The message payload
  */
-function sendToBackgroundScript<T>(name: MessageNames, body: T): void {
+function sendToBackgroundScript<T extends MessagePayload>(
+  name: MessageNames,
+  body: T
+): void {
   // Use our safe messaging utility instead of direct chrome.runtime.sendMessage
   sendMessage(name, body).catch((error) => {
     // Handle the "Unknown message type" error gracefully

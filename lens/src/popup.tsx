@@ -1,25 +1,21 @@
-import { useEffect, useState } from "react"
-
-import { Storage } from "@plasmohq/storage"
-
-import packageInfo from "../package.json"
+import { Header, MasterToggle } from "@/components"
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger
-} from "./components/ui/accordion"
-import { Button } from "./components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "./components/ui/card"
-import { Separator } from "./components/ui/separator"
-import { Switch } from "./components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs"
+} from "@/components/ui/accordion"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { getSettingLabel } from "@/utils/labels"
+import React, { useEffect, useState } from "react"
+
+import { Storage } from "@plasmohq/storage"
+
+import packageInfo from "../package.json"
+import ErrorBoundary from "./components/ErrorBoundary"
 import type { CollectedData, WebsiteData } from "./types/data"
 import {
   clearAllCollectedData,
@@ -44,19 +40,34 @@ import type { UserConfig } from "./utils/userPreferences"
 
 import "./main.css"
 
+// Determine API and Report URLs based on environment variable
+const USE_LOCAL_API =
+  (process.env.PLASMO_PUBLIC_USE_LOCAL_API || "").toString().toLowerCase() ===
+  "true"
+const API_BASE_URL = USE_LOCAL_API
+  ? "http://localhost:3000"
+  : "https://lens.vael.ai"
+const REPORTS_BASE_URL = USE_LOCAL_API
+  ? "http://localhost:3000"
+  : "https://lens.vael.ai"
+
+type BooleanUserConfigKeys = {
+  [K in keyof UserConfig]: UserConfig[K] extends boolean ? K : never
+}[keyof UserConfig]
+
 /**
  * Main popup component for the browser extension.
  * Handles user interface for data collection settings, current site information,
  * and collected data management.
  */
-function IndexPopup() {
+function IndexPopup(): JSX.Element {
   const [config, setConfig] = useState<UserConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentUrl, setCurrentUrl] = useState<string>("")
   const [currentDomain, setCurrentDomain] = useState<string>("")
   const [isCurrentDomainBlacklisted, setIsCurrentDomainBlacklisted] =
     useState(false)
-  const [activeTab, setActiveTab] = useState("collection")
+  const [activeTab, setActiveTab] = useState("overview") // Default to overview
   const [collectedData, setCollectedData] = useState<CollectedData | null>(null)
   const [dataLoading, setDataLoading] = useState(false)
   const [exportSuccess, setExportSuccess] = useState(false)
@@ -64,6 +75,21 @@ function IndexPopup() {
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false)
   const [onboardingEmailInput, setOnboardingEmailInput] = useState<string>("")
   const [dataSizeInBytes, setDataSizeInBytes] = useState<number>(0)
+  const [websiteCount, setWebsiteCount] = useState<number>(0)
+  const [dataSize, setDataSize] = useState<string>("")
+  const [lastUpdated, setLastUpdated] = useState<string>("")
+  const [isReportReady, setIsReportReady] = useState<boolean>(false)
+
+  // Define the boolean config keys to display in settings
+  const BOOLEAN_USER_CONFIG_KEYS = [
+    "collectHistory",
+    "collectPageMetadata",
+    "collectInteractions",
+    "collectTabActivity",
+    "collectContent",
+    "collectDeviceInfo",
+    "collectAnalytics"
+  ] as const
 
   // Load user configuration
   useEffect(() => {
@@ -141,6 +167,29 @@ function IndexPopup() {
       // Calculate and set data size in bytes
       const rawDataSizeInBytes = data ? JSON.stringify(data).length : 0
       setDataSizeInBytes(rawDataSizeInBytes)
+      const websitesArray = Object.values(data.websites || {})
+      const websiteCount = websitesArray.length
+      let currentTotalSize = 0
+      if (data.websites && typeof data.websites === "object") {
+        Object.values(data.websites).forEach((siteData) => {
+          if (siteData) {
+            currentTotalSize += JSON.stringify(siteData).length
+          }
+        })
+      }
+      const calculatedDataSizeInBytes = currentTotalSize
+      const dataSizeFormatted =
+        (calculatedDataSizeInBytes / 1024).toFixed(2) + " KB"
+      const lastUpdatedTimestamp = data.lastUpdated || Date.now()
+      const lastUpdatedFormatted = new Date(
+        lastUpdatedTimestamp
+      ).toLocaleString()
+      const reportIsReady =
+        calculatedDataSizeInBytes >= DATA_SIZE_THRESHOLD_BYTES
+      setWebsiteCount(websiteCount)
+      setDataSize(dataSizeFormatted)
+      setLastUpdated(lastUpdatedFormatted)
+      setIsReportReady(reportIsReady)
     } catch (error) {
       console.error("Error loading collected data:", error)
       setCollectedData(null)
@@ -295,43 +344,40 @@ function IndexPopup() {
     })
   }
 
-  // Count websites and calculate data size
-  const getDataStats = () => {
-    if (!collectedData) {
-      return {
-        websiteCount: 0,
-        dataSize: "0 KB",
-        lastUpdated: "Never",
-        isReportReady: false
-      }
-    }
-
-    const websiteCount = Object.keys(collectedData.websites).length
-    // dataSizeInBytes is now updated in loadCollectedData
-    const displayDataSize = `~${Math.round(dataSizeInBytes / 1024)} KB`
-    const lastUpdated = new Date(collectedData.lastUpdated).toLocaleString()
-    const isReportReady =
-      dataSizeInBytes >= DATA_SIZE_THRESHOLD_BYTES && !!userEmail
-
-    return {
-      websiteCount,
-      dataSize: displayDataSize,
-      lastUpdated,
-      isReportReady
-    }
-  }
-
   /**
    * Returns the most recently visited websites from collected data.
    * Limited to 5 sites for UI purposes.
    * @returns Array of tuples containing website URL and associated data, sorted by last visit time
    */
-  const getRecentWebsites = (): [string, WebsiteData][] => {
+  const getRecentWebsites = (): any[] => {
     if (!collectedData?.websites) return []
 
     return Object.entries(collectedData.websites)
-      .sort((a, b) => b[1].lastVisit - a[1].lastVisit)
+      .map(([domain, data]) => {
+        const lastVisitTimestamp =
+          (data as any).lastActivity ||
+          (data as any).tabActivityStats?.lastActivity ||
+          0
+        return {
+          ...(data as WebsiteData), // Cast to WebsiteData for type safety
+          domain,
+          lastVisitSortKey: lastVisitTimestamp
+        }
+      })
+      .sort((a, b) => b.lastVisitSortKey - a.lastVisitSortKey)
       .slice(0, 5)
+      .map((siteEntry) => {
+        return {
+          name: siteEntry.pageMetadata?.title || siteEntry.domain,
+          url: `http://${siteEntry.domain}`,
+          dataCollected: `${(JSON.stringify(siteEntry).length / 1024).toFixed(2)} KB`,
+          pageMetadata: siteEntry.pageMetadata,
+          domainSpecificData: siteEntry.domainSpecificData,
+          tabActivityStats: siteEntry.tabActivityStats,
+          interactions: siteEntry.interactions,
+          lastVisit: siteEntry.lastVisitSortKey || undefined
+        }
+      })
   }
 
   // New function to handle onboarding form submission
@@ -340,20 +386,46 @@ function IndexPopup() {
       alert("Please enter a valid email address.")
       return
     }
+
+    // In dev mode, skip backend; otherwise send to API (no 200 check needed)
+    if (!USE_LOCAL_API) {
+      try {
+        const encodedEmail = encodeURIComponent(onboardingEmailInput)
+        await fetch(`${API_BASE_URL}/api/save-email/${encodedEmail}`, {
+          method: "POST"
+        })
+        // ignoring response status
+      } catch (apiError) {
+        console.error("Error saving email to backend:", apiError)
+      }
+    }
+
+    // Update UI to reflect onboarding completion immediately
+    // This ensures the user proceeds even if subsequent storage operations fail.
+    setUserEmail(onboardingEmailInput)
+    setShowOnboarding(false)
+
+    // Attempt to save email and onboarding status locally (and via cookie in dev)
     try {
       const storage = new Storage()
       await storage.set(USER_EMAIL_KEY, onboardingEmailInput)
       await storage.set(ONBOARDING_COMPLETE_KEY, true)
-      setUserEmail(onboardingEmailInput)
-      setShowOnboarding(false)
+      // Also store in cookie for dev mode
+      if (USE_LOCAL_API) {
+        document.cookie = `userEmail=${onboardingEmailInput}; path=/;`
+      }
     } catch (error) {
-      console.error("Error saving email:", error)
-      alert("Failed to save email. Please try again.")
+      console.error(
+        "Error saving email/onboarding status to local storage:",
+        error
+      )
+      // UI has already proceeded, so we just log this error.
+      // No alert, to avoid confusing the user.
     }
   }
 
   // New function to handle report generation
-  const handleGenerateReport = () => {
+  const handleGenerateReport = async () => {
     if (!userEmail) {
       alert("Email not found. Please complete onboarding.")
       return
@@ -365,592 +437,383 @@ function IndexPopup() {
       return
     }
 
-    try {
-      const cipheredEmail = btoa(userEmail) // Basic Base64 encoding
-      const reportUrl = `https://www.vael.ai/anonymous-user-report?email=${cipheredEmail}`
-      window.open(reportUrl, "_blank")
-    } catch (error) {
-      console.error("Error generating report URL:", error)
-      alert("Failed to generate report link.")
+    const reportId = crypto.randomUUID()
+
+    // Ensure userEmail and collectedData are available (already in component state)
+    if (!userEmail || !collectedData) {
+      alert(
+        "User email or data not available. Please ensure onboarding is complete and data is collected."
+      )
+      return
+    }
+
+    if (USE_LOCAL_API) {
+      // Development mode: Simulate report generation
+      console.log(
+        `[DEV MODE] Simulating report generation for reportId: ${reportId}, email: ${userEmail}`
+      )
+      alert(
+        `[DEV MODE] Simulating report generation. Opening report page for ID: ${reportId}`
+      )
+      try {
+        chrome.tabs.create({
+          url: `${REPORTS_BASE_URL}/reports/${reportId}` // REPORTS_BASE_URL will be http://localhost:3000 in dev mode
+        })
+      } catch (error) {
+        console.error("[DEV MODE] Error opening simulated report page:", error)
+        if (error instanceof Error) {
+          alert(
+            `[DEV MODE] An error occurred while opening the simulated report page: ${error.message}`
+          )
+        } else {
+          alert(
+            "[DEV MODE] An unknown error occurred while opening the simulated report page."
+          )
+        }
+      }
+    } else {
+      // Production mode: Actual API call to submit data
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/submit-data`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            reportId: reportId,
+            email: userEmail,
+            userData: collectedData // Send the actual collected data object
+          })
+        })
+
+        const result = await response.json()
+
+        if (result.success) {
+          chrome.tabs.create({
+            url: `${REPORTS_BASE_URL}/reports/${reportId}`
+          })
+        } else {
+          console.error("Failed to submit data:", result.error)
+          alert(
+            `Failed to submit data for report: ${result.error || "Unknown error"}`
+          )
+        }
+      } catch (error) {
+        console.error("Error generating report:", error)
+        if (error instanceof Error) {
+          alert(
+            `An error occurred while generating the report: ${error.message}`
+          )
+        } else {
+          alert("An unknown error occurred while generating the report.")
+        }
+      }
     }
   }
 
   if (loading) {
     return (
       <div className="p-4 w-[400px] h-[550px] flex items-center justify-center">
-        <div className="text-lg animate-pulse">Loading...</div>
+        <p>Loading settings...</p>
       </div>
     )
   }
 
-  const { websiteCount, dataSize, lastUpdated, isReportReady } = getDataStats()
-  const recentWebsites = getRecentWebsites()
+  const recentWebsites = getRecentWebsites() // (only one declaration should exist)
 
   // Conditional rendering for onboarding
   if (showOnboarding) {
     return (
-      <div className="p-4 w-[400px] h-[550px] flex flex-col items-center justify-center">
-        <Card className="w-full max-w-sm shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-center text-lg">
-              Welcome to Vael AI
-            </CardTitle>
-            <CardDescription className="text-center text-sm">
-              Enter your email to enable personalized report generation and
-              unlock full features.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <div className="p-4 w-[400px] h-[550px] flex flex-col items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-slate-900 dark:to-indigo-900/50">
+        <div className="w-full max-w-sm shadow-xl border border-purple-300 dark:border-purple-700 rounded-lg bg-white dark:bg-slate-800 p-6">
+          <h2 className="text-center text-xl font-bold mb-4 text-purple-600 dark:text-purple-400">
+            Welcome to Lens by Vael AI
+          </h2>
+          <p className="text-center text-sm mb-6 text-slate-600 dark:text-slate-400">
+            Enter your email to enable personalized report generation and unlock
+            full features.
+          </p>
+          <div className="space-y-4">
             <input
               type="email"
-              placeholder="your@email.com"
+              placeholder="you@example.com"
               value={onboardingEmailInput}
               onChange={(e) => setOnboardingEmailInput(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
+              className="w-full p-3 border border-purple-300 dark:border-purple-600 rounded-md focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-transparent transition-shadow dark:bg-slate-700 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
             />
             <Button
               onClick={handleOnboardingSubmit}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+              className="w-full h-10 text-sm text-white bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 transition-colors">
               Continue & Start Collecting
             </Button>
-            <p className="text-xs text-center text-gray-500">
+            <p className="text-xs text-center text-slate-500 dark:text-slate-400">
               Your email is used solely for report access and is kept
               confidential.
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="p-4 pb-8 w-[400px] h-[550px] flex flex-col bg-white dark:bg-slate-900 border border-transparent rounded-lg">
-      <div className="flex items-center justify-between mb-3">
-        <h1 className="flex items-center text-xl font-bold">
-          Vael AI Context Bank
-          <Button
-            variant="link"
-            className="h-6 p-0 ml-2 text-xs underline"
-            onClick={openAboutPage}>
-            What is this?
-          </Button>
-        </h1>
-        <a
-          href="https://github.com/vael-ai/lens"
-          target="_blank"
-          className="text-xs underline opacity-50 hover:opacity-100">
-          v{packageInfo.version}
-        </a>
-      </div>
-
-      {/* Current URL display - SIMPLIFIED TO SINGLE LINE */}
-      {currentUrl && (
-        <div className="px-1 mb-3 text-sm font-medium">
-          Currently collecting data on:{" "}
-          <span className="font-normal underline">{currentDomain}</span>
-        </div>
-      )}
-
-      {/* Big Stop/Start Button - UPDATED TO MATCH IMAGE */}
-      <div className="flex flex-col items-center mb-3">
-        <button
-          onClick={toggleMasterCollection}
-          className={`w-full py-3 rounded-md text-white font-medium text-center ${
-            config?.masterCollectionEnabled
-              ? "bg-[#ee4b44] hover:bg-[#d43f38]"
-              : "bg-[#4bb85f] hover:bg-[#42a755]"
-          }`}>
-          {config?.masterCollectionEnabled
-            ? "Stop Data Collection"
-            : "Start Data Collection"}
-        </button>
-        <p className="mt-2 text-xs text-center text-gray-600">
-          Quickly toggle data collection for all sites
-        </p>
-      </div>
-
-      <Separator className="mb-3" />
-
-      {/* Tabs for different sections */}
-      <Tabs
-        defaultValue="collection"
-        value={activeTab}
-        onValueChange={setActiveTab}
-        className="flex flex-col flex-1">
-        <TabsList className="grid grid-cols-2">
-          <TabsTrigger value="collection">Collection Settings</TabsTrigger>
-          <TabsTrigger value="data">Data Management</TabsTrigger>
-        </TabsList>
-
-        {/* Collection Settings Tab */}
-        <TabsContent value="collection" className="flex flex-col flex-1 mt-2">
-          <div className="mb-2">
-            <h3 className="text-sm font-medium">Currently Collecting:</h3>
-          </div>
-
-          <div className="pb-3 mb-3">
-            <div className="grid grid-cols-2 gap-1">
-              {config?.collectPageMetadata && (
-                <div className="px-2 py-1 text-xs text-blue-700 rounded-md bg-blue-50">
-                  Page Metadata
+    <ErrorBoundary>
+      <div className="p-4 pb-2 w-[400px] h-[550px] flex flex-col bg-gradient-to-br from-slate-50 to-purple-100 dark:from-slate-800 dark:to-purple-900/20 border border-transparent rounded-lg text-sm text-slate-800 dark:text-slate-200">
+        {/* Header */}
+        <Header />
+        {/* Master Toggle */}
+        <MasterToggle
+          enabled={config?.masterCollectionEnabled ?? false}
+          onToggle={toggleMasterCollection}
+        />
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex flex-col flex-1 -mb-2">
+          <TabsList className="grid w-full grid-cols-2 mb-2 h-9">
+            <TabsTrigger
+              value="overview"
+              className="text-xs h-7 data-[state=active]:text-purple-700 data-[state=active]:border-b-2 data-[state=active]:border-purple-700 dark:data-[state=active]:text-purple-400 dark:data-[state=active]:border-purple-400 text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-300 transition-colors">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger
+              value="data"
+              className="text-xs h-7 data-[state=active]:text-purple-700 data-[state=active]:border-b-2 data-[state=active]:border-purple-700 dark:data-[state=active]:text-purple-400 dark:data-[state=active]:border-purple-400 text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-300 transition-colors">
+              Data
+            </TabsTrigger>
+          </TabsList>
+          {/* Overview Tab */}
+          <TabsContent
+            value="overview"
+            className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+            <div className="bg-slate-50 dark:bg-slate-800/50">
+              <div className="p-3">
+                <div className="text-base font-semibold text-slate-700 dark:text-slate-200">
+                  Recently Visited
                 </div>
-              )}
-              {config?.collectInteractions && (
-                <div className="px-2 py-1 text-xs text-purple-700 rounded-md bg-purple-50">
-                  User Interactions
-                </div>
-              )}
-              {config?.collectDeviceInfo && (
-                <div className="px-2 py-1 text-xs text-yellow-700 rounded-md bg-yellow-50">
-                  Device Info
-                </div>
-              )}
-              {config?.collectContent && (
-                <div className="px-2 py-1 text-xs text-green-700 rounded-md bg-green-50">
-                  Page Content
-                </div>
-              )}
-              {config?.collectEcommerce && (
-                <div className="px-2 py-1 text-xs text-orange-700 rounded-md bg-orange-50">
-                  E-commerce
-                </div>
-              )}
-              {config?.collectTravel && (
-                <div className="px-2 py-1 text-xs text-indigo-700 rounded-md bg-indigo-50">
-                  Travel
-                </div>
-              )}
-              {config?.collectProductivity && (
-                <div className="px-2 py-1 text-xs rounded-md bg-rose-50 text-rose-700">
-                  Productivity
-                </div>
-              )}
-              {config?.collectAnalytics && (
-                <div className="px-2 py-1 text-xs rounded-md bg-cyan-50 text-cyan-700">
-                  Extension Analytics
-                </div>
-              )}
-            </div>
-          </div>
-
-          <Button
-            variant="outline"
-            className="w-full h-8 mb-3 text-xs"
-            onClick={() => openAdvancedSettingsWithTab("collection")}>
-            <svg
-              className="w-3.5 h-3.5 mr-1.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-              />
-            </svg>
-            Advanced Collection Settings
-          </Button>
-
-          <Accordion
-            type="single"
-            collapsible
-            className="w-full overflow-auto max-h-[280px] border-b-0"
-            defaultValue="general">
-            <AccordionItem value="general">
-              <AccordionTrigger className="py-2 text-sm font-medium">
-                General Collection:
-              </AccordionTrigger>
-              <AccordionContent className="pt-0 border-t-0">
-                <div className="pl-1 pt-0 border-t-0">
-                  <div className="flex items-center justify-between border-b-0 border-t-0">
-                    <div>
-                      <label className="text-sm font-medium">
-                        Page Metadata:
-                      </label>
-                      <p className="text-xs text-gray-500">
-                        URLs, titles, meta tags
-                      </p>
-                    </div>
-                    <Switch
-                      checked={config?.collectPageMetadata}
-                      onCheckedChange={() =>
-                        toggleSetting("collectPageMetadata")
-                      }
-                      disabled={!config?.masterCollectionEnabled}
-                      className={
-                        config?.collectPageMetadata
-                          ? "bg-green-600 data-[state=checked]:bg-green-600"
-                          : "bg-gray-200 data-[state=unchecked]:bg-red-200"
-                      }
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between border-b-0 border-t-0">
-                    <div>
-                      <label className="text-sm font-medium">
-                        User Interactions:
-                      </label>
-                      <p className="text-xs text-gray-500">
-                        Clicks, scrolls, time spent
-                      </p>
-                    </div>
-                    <Switch
-                      checked={config?.collectInteractions}
-                      onCheckedChange={() =>
-                        toggleSetting("collectInteractions")
-                      }
-                      disabled={!config?.masterCollectionEnabled}
-                      className={
-                        config?.collectInteractions
-                          ? "bg-green-600 data-[state=checked]:bg-green-600"
-                          : "bg-gray-200 data-[state=unchecked]:bg-red-200"
-                      }
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between border-b-0 border-t-0">
-                    <div>
-                      <label className="text-sm font-medium">
-                        Device Information:
-                      </label>
-                      <p className="text-xs text-gray-500">
-                        Screen size, browser, platform
-                      </p>
-                    </div>
-                    <Switch
-                      checked={config?.collectDeviceInfo}
-                      onCheckedChange={() => toggleSetting("collectDeviceInfo")}
-                      disabled={!config?.masterCollectionEnabled}
-                      className={
-                        config?.collectDeviceInfo
-                          ? "bg-green-600 data-[state=checked]:bg-green-600"
-                          : "bg-gray-200 data-[state=unchecked]:bg-red-200"
-                      }
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between border-b-0 border-t-0">
-                    <div>
-                      <label className="text-sm font-medium">
-                        Page Content:
-                      </label>
-                      <p className="text-xs text-gray-500">
-                        Text from pages you visit
-                      </p>
-                    </div>
-                    <Switch
-                      checked={config?.collectContent}
-                      onCheckedChange={() => toggleSetting("collectContent")}
-                      disabled={!config?.masterCollectionEnabled}
-                      className={
-                        config?.collectContent
-                          ? "bg-green-600 data-[state=checked]:bg-green-600"
-                          : "bg-gray-200 data-[state=unchecked]:bg-red-200"
-                      }
-                    />
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="domain-specific">
-              <AccordionTrigger className="py-2 text-sm font-medium">
-                Domain-Specific Data:
-              </AccordionTrigger>
-              <AccordionContent className="pt-0 border-t-0">
-                <div className="pl-1 space-y-3">
-                  <div className="flex items-center justify-between border-b-0 border-t-0">
-                    <div>
-                      <label className="text-sm font-medium">
-                        E-commerce Data:
-                      </label>
-                      <p className="text-xs text-gray-500">
-                        Products, categories, pricing
-                      </p>
-                    </div>
-                    <Switch
-                      checked={config?.collectEcommerce}
-                      onCheckedChange={() => toggleSetting("collectEcommerce")}
-                      disabled={!config?.masterCollectionEnabled}
-                      className={
-                        config?.collectEcommerce
-                          ? "bg-green-600 data-[state=checked]:bg-green-600"
-                          : "bg-gray-200 data-[state=unchecked]:bg-red-200"
-                      }
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between border-b-0 border-t-0">
-                    <div>
-                      <label className="text-sm font-medium">
-                        Travel Data:
-                      </label>
-                      <p className="text-xs text-gray-500">
-                        Locations, dates, preferences
-                      </p>
-                    </div>
-                    <Switch
-                      checked={config?.collectTravel}
-                      onCheckedChange={() => toggleSetting("collectTravel")}
-                      disabled={!config?.masterCollectionEnabled}
-                      className={
-                        config?.collectTravel
-                          ? "bg-green-600 data-[state=checked]:bg-green-600"
-                          : "bg-gray-200 data-[state=unchecked]:bg-red-200"
-                      }
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between border-b-0 border-t-0">
-                    <div>
-                      <label className="text-sm font-medium">
-                        Productivity Data:
-                      </label>
-                      <p className="text-xs text-gray-500">
-                        Apps, tools, work context
-                      </p>
-                    </div>
-                    <Switch
-                      checked={config?.collectProductivity}
-                      onCheckedChange={() =>
-                        toggleSetting("collectProductivity")
-                      }
-                      disabled={!config?.masterCollectionEnabled}
-                      className={
-                        config?.collectProductivity
-                          ? "bg-green-600 data-[state=checked]:bg-green-600"
-                          : "bg-gray-200 data-[state=unchecked]:bg-red-200"
-                      }
-                    />
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="browser">
-              <AccordionTrigger className="py-2 text-sm font-medium">
-                Browser Activity:
-              </AccordionTrigger>
-              <AccordionContent className="pt-0 border-t-0">
-                <div className="pl-1 space-y-3">
-                  <div className="flex items-center justify-between border-b-0 border-t-0">
-                    <div>
-                      <label className="text-sm font-medium">
-                        Tab & Window Activity:
-                      </label>
-                      <p className="text-xs text-gray-500">
-                        Navigation patterns, session data
-                      </p>
-                    </div>
-                    <Switch
-                      checked={true}
-                      disabled={!config?.masterCollectionEnabled}
-                      className="bg-green-600 data-[state=checked]:bg-green-600"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between border-b-0 border-t-0">
-                    <div>
-                      <label className="text-sm font-medium">
-                        Extension Analytics:
-                      </label>
-                      <p className="text-xs text-gray-500">
-                        Anonymous extension usage data
-                      </p>
-                    </div>
-                    <Switch
-                      checked={config?.collectAnalytics}
-                      onCheckedChange={() => toggleSetting("collectAnalytics")}
-                      disabled={!config?.masterCollectionEnabled}
-                      className={
-                        config?.collectAnalytics
-                          ? "bg-green-600 data-[state=checked]:bg-green-600"
-                          : "bg-gray-200 data-[state=unchecked]:bg-red-200"
-                      }
-                    />
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </TabsContent>
-
-        {/* Data Management Tab - IMPROVED LAYOUT, NO MAIN SCROLLBAR */}
-        <TabsContent value="data" className="flex flex-col flex-1">
-          <div className="grid grid-cols-2 gap-2 mt-1">
-            <Button
-              size="sm"
-              variant="default"
-              onClick={handleExportData}
-              className="w-full text-sm bg-green-600 h-9 hover:bg-green-700">
-              {exportSuccess ? "Exported!" : "Export all data to JSON"}
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={handleClearData}
-              className="w-full text-sm h-9">
-              Clear All Data
-            </Button>
-          </div>
-
-          {/* Report Generation Button - ADDED */}
-          <Button
-            size="sm"
-            variant="default"
-            onClick={handleGenerateReport}
-            disabled={!isReportReady}
-            className={`w-full text-sm h-9 mt-2 ${
-              isReportReady
-                ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-gray-400 cursor-not-allowed"
-            }`}>
-            Generate Report
-          </Button>
-          {!isReportReady && (
-            <p className="mt-1 text-xs text-center text-gray-500">
-              {!userEmail
-                ? "Email required for reports."
-                : `Collect ${DATA_SIZE_THRESHOLD_MB}MB for reports (Current: ${Math.round(
-                    dataSizeInBytes / (1024 * 1024)
-                  )}MB)`}
-            </p>
-          )}
-
-          <div className="pb-2 mt-2 border-b">
-            <div className="flex items-baseline justify-between">
-              <span className="text-xs font-medium">
-                Total websites visited:
-              </span>
-              <span className="text-sm font-bold">{websiteCount}</span>
-            </div>
-            <div className="flex items-baseline justify-between mt-1">
-              <span className="text-xs font-medium">Data size:</span>
-              <span className="text-sm font-bold">{dataSize}</span>
-            </div>
-            <div className="flex items-baseline justify-between mt-1">
-              <span className="text-xs font-medium">Last updated:</span>
-              <span className="text-sm">{lastUpdated}</span>
-            </div>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => openAdvancedSettingsWithTab("data")}
-            className="w-full mt-3 text-xs">
-            <svg
-              className="w-3.5 h-3.5 mr-1.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-              />
-            </svg>
-            Open Advanced Data Viewer
-          </Button>
-
-          <div className="flex-1 mt-3 overflow-auto">
-            {dataLoading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-sm animate-pulse">Loading data...</div>
               </div>
-            ) : !collectedData || recentWebsites.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <div className="mb-2 text-gray-400">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="48"
-                    height="48"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="mx-auto">
-                    <path d="M12 21h7a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7z" />
-                    <path d="M12 21V5" />
-                    <path d="M10 12H8" />
-                    <path d="M16 12h-2" />
-                    <path d="M10 16H8" />
-                    <path d="M16 16h-2" />
-                    <path d="M10 8H8" />
-                    <path d="M16 8h-2" />
-                  </svg>
-                </div>
-                <h4 className="mb-1 text-sm font-medium">
-                  No Data Collected Yet
-                </h4>
-                <p className="text-xs text-gray-500">
-                  Browse with data collection enabled to gather context for AI.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {recentWebsites.map(([key, website], index) => (
-                  <Card key={index} className="overflow-hidden">
-                    <CardHeader className="p-3">
-                      <CardTitle className="flex justify-between text-xs font-medium">
-                        <span className="truncate max-w-[200px]">
-                          {website.url}
+              <div className="p-3 pt-0 text-xs">
+                {recentWebsites.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {recentWebsites.slice(0, 3).map((site, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-1.5 bg-white dark:bg-slate-700/50 rounded-md shadow-sm">
+                        <a
+                          href={site.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="truncate hover:underline text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
+                          title={site.name}>
+                          {site.name.length > 30
+                            ? `${site.name.substring(0, 27)}...`
+                            : site.name}
+                        </a>
+                        <span className="ml-2 text-[10px] text-purple-500 dark:text-purple-400">
+                          {site.dataCollected}
                         </span>
-                        <span className="text-gray-500">
-                          {new Date(website.lastVisit).toLocaleString()}
-                        </span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-3 pt-0">
-                      <div className="text-xs text-gray-500">
-                        <div>
-                          Page: {website.pageMetadata?.title || "Unknown"}
-                        </div>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {website.pageMetadata && (
-                            <span className="bg-blue-100 px-1.5 py-0.5 rounded text-[10px]">
-                              Metadata
-                            </span>
-                          )}
-                          {website.domainSpecificData && (
-                            <span className="bg-green-100 px-1.5 py-0.5 rounded text-[10px]">
-                              Domain Data
-                            </span>
-                          )}
-                          {website.tabActivityStats && (
-                            <span className="bg-yellow-100 px-1.5 py-0.5 rounded text-[10px]">
-                              Tab Activity
-                            </span>
-                          )}
-                          {Object.keys(website.interactions || {}).length >
-                            0 && (
-                            <span className="bg-purple-100 px-1.5 py-0.5 rounded text-[10px]">
-                              Interactions
-                            </span>
-                          )}
-                        </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-
-                {websiteCount > 5 && (
-                  <div className="pt-1 text-xs text-center text-gray-500">
-                    +{websiteCount - 5} more websites...
+                    ))}
+                    {recentWebsites.length > 3 && (
+                      <p className="text-[11px] text-center pt-1 text-purple-500 dark:text-purple-400">
+                        + {recentWebsites.length - 3} more sites (view in Data
+                        tab or Advanced Viewer)
+                      </p>
+                    )}
                   </div>
+                ) : (
+                  <p className="text-slate-500 dark:text-slate-400">
+                    No recent websites to show. Start browsing!
+                  </p>
                 )}
               </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
-    </div>
+            </div>
+            {/* Settings merged into Overview */}
+            <div className="bg-slate-50 dark:bg-slate-800/50">
+              <div className="p-3">
+                <div className="text-base font-semibold text-slate-700 dark:text-slate-200">
+                  Extension Settings
+                </div>
+              </div>
+              <div className="p-3 pt-0 text-xs">
+                {config &&
+                  BOOLEAN_USER_CONFIG_KEYS.map((key) => (
+                    <div
+                      key={key}
+                      className="flex items-center justify-between py-2.5 border-b border-slate-200 dark:border-slate-700 last:border-b-0">
+                      <label
+                        htmlFor={key}
+                        className="text-xs text-slate-700 dark:text-slate-300">
+                        {getSettingLabel(key)}
+                      </label>
+                      <Switch
+                        id={key}
+                        checked={
+                          config && (config[key as keyof UserConfig] as boolean)
+                        }
+                        onCheckedChange={() =>
+                          toggleSetting(key as keyof UserConfig)
+                        }
+                        className={
+                          "data-[state=checked]:bg-purple-600 dark:data-[state=checked]:bg-purple-500 data-[state=unchecked]:bg-slate-300 dark:data-[state=unchecked]:bg-slate-600"
+                        }
+                      />
+                    </div>
+                  ))}
+              </div>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/50">
+              <div className="p-3">
+                <div className="text-sm font-semibold">Manage Domains</div>
+              </div>
+              <div className="p-3 pt-0 text-xs">
+                <div className="flex items-center space-x-2 mb-2">
+                  <input
+                    type="text"
+                    placeholder={
+                      currentDomain
+                        ? `e.g., ${currentDomain}`
+                        : "e.g., example.com"
+                    }
+                    value={""}
+                    onChange={(e) => {}}
+                    className="h-8 text-xs"
+                  />
+                  <Button
+                    onClick={() => {}}
+                    className="h-8 text-xs whitespace-nowrap"
+                    variant="outline"
+                    style={{ borderColor: "#938EEA", color: "#938EEA" }}>
+                    Block Site
+                  </Button>
+                </div>
+                {currentUrl && (
+                  <Button
+                    onClick={toggleCurrentDomain}
+                    variant={
+                      isCurrentDomainBlacklisted ? "secondary" : "outline"
+                    }
+                    className="w-full h-8 text-xs mb-2"
+                    style={{ borderColor: "#938EEA", color: "#938EEA" }}>
+                    {isCurrentDomainBlacklisted
+                      ? `Unblock ${currentDomain}`
+                      : `Block Current Site (${currentDomain})`}
+                  </Button>
+                )}
+                <p className="text-[10px] mb-1" style={{ color: "#938EEA" }}>
+                  Blocked sites ({config?.blacklistedDomains.length || 0}):
+                </p>
+                <div className="max-h-20 overflow-y-auto space-y-1 pr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+                  {config?.blacklistedDomains.map((d) => (
+                    <div
+                      key={d}
+                      className="flex items-center justify-between text-[11px] bg-white dark:bg-slate-700/50 p-1 rounded-sm">
+                      <span style={{ color: "#938EEA" }}>{d}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {}}
+                        className="h-5 px-1 py-0"
+                        style={{ color: "#938EEA" }}>
+                        &times;
+                      </Button>
+                    </div>
+                  ))}
+                  {config?.blacklistedDomains.length === 0 && (
+                    <p className="text-[11px]" style={{ color: "#938EEA" }}>
+                      No sites blocked.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Data Tab */}
+          <TabsContent
+            value="data"
+            className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+            <div className="bg-slate-50 dark:bg-slate-800/50">
+              <div className="p-3">
+                <div className="text-sm font-semibold">
+                  Data Summary & Actions
+                </div>
+              </div>
+              <div className="p-3 pt-0 text-xs space-y-1.5">
+                <p>
+                  Websites tracked:{" "}
+                  <span className="font-medium">{websiteCount}</span>
+                </p>
+                <p>
+                  Total data size:{" "}
+                  <span className="font-medium">{dataSize}</span>
+                </p>
+                <p>
+                  Last activity:{" "}
+                  <span className="font-medium">{lastUpdated}</span>
+                </p>
+                {isReportReady ? (
+                  <p className="text-green-600 dark:text-green-400">
+                    Report is ready to generate.
+                  </p>
+                ) : (
+                  <p className="text-orange-600 dark:text-orange-400">
+                    Collect at least {DATA_SIZE_THRESHOLD_MB}MB of data to
+                    generate a report.
+                  </p>
+                )}
+                <Button
+                  onClick={handleGenerateReport}
+                  className="mt-2 w-full h-8 text-xs"
+                  disabled={dataLoading || !isReportReady}>
+                  {dataLoading ? "Generating Report..." : "Generate Report"}
+                </Button>
+                <Button
+                  onClick={handleExportData}
+                  className="mt-1.5 w-full h-8 text-xs"
+                  variant="outline">
+                  Export Raw Data
+                </Button>
+                {exportSuccess && (
+                  <p className="text-green-600 dark:text-green-400 mt-1 text-center">
+                    Data exported successfully!
+                  </p>
+                )}
+                <Button
+                  onClick={handleClearData}
+                  className="mt-1.5 w-full h-8 text-xs"
+                  variant="destructive">
+                  Delete All Data
+                </Button>
+              </div>
+            </div>
+            <Button
+              onClick={() => openAdvancedSettingsWithTab("data")}
+              className="w-full h-8 text-xs"
+              variant="link">
+              Open Advanced Data Viewer
+            </Button>
+          </TabsContent>
+        </Tabs>
+        {/* Footer */}
+        {/*
+          Display the extension version from package.json. This works because 'resolveJsonModule' is enabled in tsconfig.json and the bundler supports importing JSON. 
+          Note: For browser extensions, you can also use chrome.runtime.getManifest().version for the actual installed version. 
+        */}
+        <div className="mt-auto pt-2 text-center text-[10px] border-t border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+          Lens by{" "}
+          <a
+            href="https://lens.vael.ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 underline">
+            Vael AI
+          </a>{" "}
+          v{packageInfo.version}
+        </div>
+      </div>
+      {/* End of main content div */}
+    </ErrorBoundary>
   )
 }
 

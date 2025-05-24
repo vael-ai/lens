@@ -1,4 +1,4 @@
-// Raw Data Schema for Vael AI Context Bank extension
+// Raw Data Schema for Lens by Vael AI Context Bank extension
 // Defines the structure of collected data for external use
 
 /** Collection Data Types **/

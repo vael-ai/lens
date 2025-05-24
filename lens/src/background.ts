@@ -12,7 +12,7 @@ import {
 } from "./utils/userPreferences"
 
 /**
- * Vael AI Context Bank - Background Script
+ * Lens by Vael AI Context Bank - Background Script
  *
  * This script handles:
  * - Extension icon and badge management

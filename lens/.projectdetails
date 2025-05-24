@@ -5,6 +5,8 @@ Develop a Manifest V3 compatible browser extension for Chrome (and other Chromiu
 
 Core Functionalities:
 
+(Note: API and report URLs mentioned in this document, such as `https://lens.vael.ai`, refer to the production environment. During development, if the `PLASMO_PUBLIC_USE_LOCAL_API` environment variable is set to `'true'`, the extension will use `http://localhost:3000` as the base URL for these endpoints.)
+
 1.  Data Collection:
     *   Categories:
         *   Browser History (URLs, timestamps)
@@ -17,15 +19,26 @@ Core Functionalities:
     *   Domain-Specific Collection: Logic to tailor data collection based on domain type (e.g., enhanced product detail collection on e-commerce sites).
     *   Collection Control: Master toggle for enabling/disabling all collection. Granular toggles for each data category and domain type (e-commerce, travel, productivity).
 
-2.  User Onboarding & Profile:
-    *   Email Collection: Upon first use (or if not yet completed), the user is prompted to enter their email address.
-    *   Purpose: The email is used to associate the user with their generated reports.
-    *   Storage: The email is stored locally. A Base64 encoded version (referred to as `cipheredEmail`) is used in report generation URLs.
+2.  User Onboarding and Consent:
+    *   Initial State: On first launch, the extension presents an onboarding flow.
+    *   Email Collection: Users are prompted to enter their email. This email is primarily for associating the collected data with the user for report generation and accessing their personalized insights dashboard.
+    *   Consent: Clear consent is obtained for data collection. Users must agree to the terms before any data is collected.
+    *   Storage: The user's email and onboarding completion status are stored locally in the browser's extension storage.
+    *   API Email Submission (New):
+        *   Process: During onboarding, after email validation, an attempt is made to send the user's email via a POST request to `https://lens.vael.ai/api/save-email/{user_email}`.
+        *   Current Behavior: If this API call fails (network error, server error), the error is logged to the console. However, the user can still proceed with using the extension, and their email is still saved locally for report generation purposes.
+        *   TODO: Harden this API integration. Implement robust error handling, confirm final API endpoint details and requirements (e.g., authentication, CSRF), and define behavior for persistent API failures.
 
-3.  Report Generation:
+3.  Report Generation (New Flow):
     *   Trigger: A "Generate Report" button is available in the extension's popup UI.
-    *   Data Threshold: The button is enabled only after the user has accumulated at least 150MB of browsing data.
-    *   Process: Clicking the button opens a new tab to a predefined URL: `https://www.vael.ai/anonymous-user-report?email=<cipheredEmail>`. The actual report generation and display are handled by this external web service.
+    *   Data Threshold: The button is enabled only after the user has accumulated sufficient browsing data (e.g., 10MB, with a server-side check for 150MB for actual processing).
+    *   Process:
+        1.  UUID Generation: When the user clicks "Generate Report", the extension generates a unique `reportId` using `crypto.randomUUID()`.
+        2.  Data Aggregation: The extension retrieves the stored `userEmail` and the collected `userData`.
+        3.  API Submission: The extension sends a `POST` request to `https://lens.vael.ai/api/submit-data` with a JSON payload containing `reportId`, `email`, and `userData`.
+        4.  Redirection: If the API submission is successful, the extension opens a new tab to `https://lens.vael.ai/reports/${reportId}`.
+        5.  Report Handling: The actual report processing, status polling, and display are handled by the `lens.vael.ai` web application on that report page.
+    *   Maximum Data Collection: The extension will stop collecting new data once the total stored data reaches approximately 150MB to manage storage.
     *   Data Display: The popup shows the current accumulated data size to inform the user about their progress towards the 150MB threshold.
 
 4.  User Interface (Popup - [popup.tsx](cci:7://file:///c:/Users/aryan/Documents/GitHub/lens-new/lens/src/popup.tsx:0:0-0:0)):
@@ -59,7 +72,7 @@ Core Functionalities:
     *   User Consent: Explicit consent for data collection. Clear toggles and explanations.
     *   Default Blacklist: Pre-configured blacklist for sensitive domains (e.g., banking, healthcare).
     *   Transparency: Clear indication of what data is being collected and why.
-    *   Email Handling: Email is used for report association. Base64 encoding is a placeholder for "ciphering"; a more robust method could be considered if sensitive data is transmitted or stored long-term by the backend.
+    *   Email Handling & Report Association: Email is used for user identification. For report generation, a unique `reportId` (UUID) is generated by the extension. This `reportId` and the user's `email` are sent to the backend, allowing the backend to associate the report with the user without exposing the email in the report URL.
 
 8.  Technical Stack & Architecture:
     *   Manifest V3.

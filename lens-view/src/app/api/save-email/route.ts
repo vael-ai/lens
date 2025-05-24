@@ -1,11 +1,39 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongo/mongodb";
+import { checkAnonymousRateLimit } from "@/lib/auth";
+import { headers } from "next/headers";
 
 // Email saving should not be cached as each request is unique
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
     try {
+        // Get client IP for rate limiting
+        const headersList = await headers();
+        const forwardedFor = headersList.get("x-forwarded-for");
+        const realIP = headersList.get("x-real-ip");
+        const clientIP = forwardedFor?.split(",")[0] ?? realIP ?? "unknown";
+
+        // Check rate limits for anonymous endpoint
+        const rateLimitCheck = await checkAnonymousRateLimit(request);
+        if (!rateLimitCheck.allowed) {
+            return NextResponse.json(
+                {
+                    error: rateLimitCheck.error,
+                    type: "rate_limit_exceeded",
+                    remainingRequests: rateLimitCheck.remainingRequests ?? 0,
+                },
+                {
+                    status: 429,
+                    headers: {
+                        "X-RateLimit-Remaining": (rateLimitCheck.remainingRequests ?? 0).toString(),
+                        "Retry-After": "60", // Suggest retry after 60 seconds
+                    },
+                }
+            );
+        }
+
         const { email } = await request.json();
 
         // Basic email validation

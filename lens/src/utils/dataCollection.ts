@@ -79,11 +79,12 @@ const getUrlKey = (url: string, includePath = true): string => {
  * @returns A promise resolving to the current collected data object, or null if not found
  */
 export const getCollectedData = async (): Promise<CollectedData | null> => {
-  return safeStorageOperation(
+  const result = await safeStorageOperation(
     async () => storage.get<CollectedData>(COLLECTED_DATA_KEY),
     null,
     "Error getting collected data"
   )
+  return result ?? null
 }
 
 /**
@@ -397,7 +398,7 @@ export const updateInteractions = async (
         if (interaction.details.elementPath) {
           // Check if we already have this element path
           const existingElement = existingInteraction.targetElements.find(
-            (el) => el.elementPath === interaction.details.elementPath
+            (el) => el.elementPath === interaction?.details?.elementPath
           )
 
           if (existingElement) {

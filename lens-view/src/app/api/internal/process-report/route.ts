@@ -5,11 +5,9 @@ import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { z } from "zod";
 import clientPromise from "@/lib/mongo/mongodb";
-import { headers } from "next/headers";
-import type { CollectedData } from "../../../../../lens/src/types/data";
+import { validateInternalToken } from "@/lib/internal-jwt";
+import type { CollectedData } from "../../../../../../lens/src/types/data";
 import crypto from "crypto";
-import { env } from "@/env";
-import { generateInternalToken } from "@/lib/internal-jwt";
 
 // This endpoint should not be cached as it handles unique data submissions
 export const dynamic = "force-dynamic";
@@ -129,121 +127,16 @@ const reportSchema = z.object({
     }),
 });
 
-// Rate limiting configuration
-const RATE_LIMITS = {
-    maxReportsPerEmailPerDay: 3,
-    maxReportsPerEmailPerWeek: 10,
-    maxReportsPerIPPerHour: 5,
-    maxReportsPerIPPerDay: 15,
-    maxGlobalReportsPerMinute: 10,
-    maxGlobalReportsPerHour: 100,
-};
-
-// Input validation schema
-const submitDataSchema = z.object({
+// Input validation schema for internal API
+const internalProcessSchema = z.object({
     reportId: z.string().uuid("Invalid UUID format"),
     email: z.string().email("Invalid email format"),
     userData: z.record(z.any()).refine((data) => Object.keys(data).length > 0, "User data cannot be empty"),
 });
 
-async function checkRateLimits(email: string, clientIP: string): Promise<{ allowed: boolean; error?: string }> {
-    try {
-        const client = await clientPromise;
-        const db = client.db("lens");
-        const reportsCollection = db.collection("reports");
-
-        const now = new Date();
-        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
-
-        // Check email-based rate limits
-        const emailReportsToday = await reportsCollection.countDocuments({
-            email,
-            createdAt: { $gte: oneDayAgo },
-        });
-
-        if (emailReportsToday >= RATE_LIMITS.maxReportsPerEmailPerDay) {
-            return {
-                allowed: false,
-                error: `Rate limit exceeded: Maximum ${RATE_LIMITS.maxReportsPerEmailPerDay} reports per day per email. Try again tomorrow.`,
-            };
-        }
-
-        const emailReportsThisWeek = await reportsCollection.countDocuments({
-            email,
-            createdAt: { $gte: oneWeekAgo },
-        });
-
-        if (emailReportsThisWeek >= RATE_LIMITS.maxReportsPerEmailPerWeek) {
-            return {
-                allowed: false,
-                error: `Rate limit exceeded: Maximum ${RATE_LIMITS.maxReportsPerEmailPerWeek} reports per week per email. Try again next week.`,
-            };
-        }
-
-        // Check IP-based rate limits (if available)
-        if (clientIP && clientIP !== "unknown") {
-            const ipReportsThisHour = await reportsCollection.countDocuments({
-                clientIP,
-                createdAt: { $gte: oneHourAgo },
-            });
-
-            if (ipReportsThisHour >= RATE_LIMITS.maxReportsPerIPPerHour) {
-                return {
-                    allowed: false,
-                    error: `Rate limit exceeded: Too many requests from this IP. Try again in an hour.`,
-                };
-            }
-
-            const ipReportsToday = await reportsCollection.countDocuments({
-                clientIP,
-                createdAt: { $gte: oneDayAgo },
-            });
-
-            if (ipReportsToday >= RATE_LIMITS.maxReportsPerIPPerDay) {
-                return {
-                    allowed: false,
-                    error: `Rate limit exceeded: Too many requests from this IP today. Try again tomorrow.`,
-                };
-            }
-        }
-
-        // Check global rate limits
-        const globalReportsLastMinute = await reportsCollection.countDocuments({
-            createdAt: { $gte: oneMinuteAgo },
-        });
-
-        if (globalReportsLastMinute >= RATE_LIMITS.maxGlobalReportsPerMinute) {
-            return {
-                allowed: false,
-                error: `System busy: Too many reports being generated. Please try again in a few minutes.`,
-            };
-        }
-
-        const globalReportsLastHour = await reportsCollection.countDocuments({
-            createdAt: { $gte: oneHourAgo },
-        });
-
-        if (globalReportsLastHour >= RATE_LIMITS.maxGlobalReportsPerHour) {
-            return {
-                allowed: false,
-                error: `System busy: High demand detected. Please try again later.`,
-            };
-        }
-
-        return { allowed: true };
-    } catch (error) {
-        console.error("Error checking rate limits:", error);
-        // If rate limit check fails, allow the request but log the error
-        return { allowed: true };
-    }
-}
-
 async function processReportInBackground(reportId: string, email: string, userData: CollectedData) {
     try {
-        console.log(`Starting background processing for report ${reportId}`);
+        console.log(`Starting background processing for report ${reportId} via internal API`);
         const startTime = Date.now();
 
         // Get MongoDB client
@@ -886,9 +779,9 @@ Generate detailed, insightful analysis focusing on meaningful behavioral evoluti
             }
         );
 
-        console.log(`Background processing completed for report ${reportId}`);
+        console.log(`Background processing completed for report ${reportId} via internal API`);
     } catch (error) {
-        console.error(`Background processing failed for report ${reportId}:`, error);
+        console.error(`Background processing failed for report ${reportId} via internal API:`, error);
 
         // Update status to failed with detailed error info
         try {
@@ -926,7 +819,7 @@ Generate detailed, insightful analysis focusing on meaningful behavioral evoluti
                 }
             );
 
-            console.log(`Status update result for ${reportId}:`, updateResult);
+            console.log(`Status update result for ${reportId} (failure):`, updateResult);
 
             if (updateResult.matchedCount === 0) {
                 console.error(`Report ${reportId} not found when trying to update failure status`);
@@ -936,247 +829,43 @@ Generate detailed, insightful analysis focusing on meaningful behavioral evoluti
                 console.log(`Successfully marked report ${reportId} as failed`);
             }
         } catch (dbError) {
-            console.error("Failed to update error status:", dbError);
+            console.error("Failed to update error status for report:", reportId, dbError);
         }
     }
 }
 
 export async function POST(request: NextRequest) {
     try {
-        // Parse and validate request body
+        // 1. Validate JWT token first
+        const tokenPayload = validateInternalToken(request);
+        console.log(`Internal API called for report: ${tokenPayload.reportId}`);
+
+        // 2. Parse and validate request body
         const body = await request.json();
-        const validatedData = submitDataSchema.parse(body);
+        const validatedData = internalProcessSchema.parse(body);
         const { reportId, email, userData } = validatedData;
 
-        // Get client IP for rate limiting (optional)
-        const headersList = await headers();
-        const forwardedFor = headersList.get("x-forwarded-for");
-        const realIP = headersList.get("x-real-ip");
-        const clientIP = forwardedFor?.split(",")[0] || realIP || "unknown";
-
-        // Check rate limits first
-        const rateLimitCheck = await checkRateLimits(email, clientIP);
-        if (!rateLimitCheck.allowed) {
-            return NextResponse.json(
-                {
-                    error: rateLimitCheck.error,
-                    type: "rate_limit_exceeded",
-                    retryAfter: "1 hour",
-                },
-                { status: 429 }
-            );
+        // 3. Verify token data matches request data
+        if (tokenPayload.reportId !== reportId || tokenPayload.email !== email) {
+            return NextResponse.json({ error: "Token data mismatch with request data" }, { status: 403 });
         }
 
-        // Validate data size (minimum 10KB, maximum 1MB for reports)
-        const dataSize = JSON.stringify(userData).length;
+        // 4. Start background processing using 'after'
+        after(async () => {
+            await processReportInBackground(reportId, email, userData as CollectedData);
+        });
 
-        if (dataSize < 10 * 1024) {
-            return NextResponse.json(
-                { error: "Insufficient data for report generation. Minimum 10KB required." },
-                { status: 400 }
-            );
-        }
-
-        if (dataSize > 1 * 1024 * 1024) {
-            return NextResponse.json({ error: "Data size too large. Maximum 1MB allowed." }, { status: 400 });
-        }
-
-        console.log(`Processing report for ${email}: ${Math.round(dataSize / 1024)}KB of browsing data`);
-
-        // Get MongoDB client from connection promise
-        const client = await clientPromise;
-        const db = client.db("lens");
-        const reportsCollection = db.collection("reports");
-
-        // Check for recent reports and data similarity (only apply restrictions when USE_LOCAL_API is false)
-        const recentReport = await reportsCollection.findOne(
-            {
-                email,
-                status: "completed",
-            },
-            { sort: { completedAt: -1 } }
-        );
-
-        if (!env.USE_LOCAL_API && recentReport && recentReport.userData) {
-            const similarity = calculateDataSimilarity(userData, recentReport.userData);
-
-            // If data is very similar (>85% similarity), return cached report
-            if (similarity > 0.85) {
-                console.log(`Returning cached report for ${email} - data similarity: ${Math.round(similarity * 100)}%`);
-                return NextResponse.json({
-                    success: true,
-                    reportId: recentReport.reportId,
-                    message: "Using cached report - your data hasn't changed significantly.",
-                    redirectUrl: `/reports/${recentReport.reportId}`,
-                    cached: true,
-                });
-            }
-
-            // Check if enough data has changed (at least 10KB difference)
-            const previousDataSize = JSON.stringify(recentReport.userData).length;
-            const dataDifference = Math.abs(dataSize - previousDataSize);
-
-            if (dataDifference < 10 * 1024 && similarity > 0.7) {
-                return NextResponse.json(
-                    {
-                        error: "Data hasn't changed enough to generate a new report. Please browse more websites or wait for more activity.",
-                        minimumChangeRequired: "10KB of new browsing data",
-                        currentDataSize: `${Math.round(dataSize / 1024)}KB`,
-                        previousDataSize: `${Math.round(previousDataSize / 1024)}KB`,
-                        similarity: `${Math.round(similarity * 100)}%`,
-                    },
-                    { status: 400 }
-                );
-            }
-        } else if (env.USE_LOCAL_API) {
-            console.log(`Local API mode enabled - bypassing data similarity checks for ${email}`);
-        }
-
-        // Get request metadata for logging
-        const userAgent = headersList.get("user-agent") || "unknown";
-
-        // 1. Update user email document - increment generated_reports
-        const emailsCollection = db.collection("emails");
-        await emailsCollection.updateOne(
-            { email },
-            {
-                $inc: { generated_reports: 1 },
-                $setOnInsert: {
-                    email,
-                    registeredAt: new Date(),
-                    source: "lens-extension",
-                },
-            },
-            { upsert: true }
-        );
-
-        // 2. Create report document with processing status
-        const reportDoc = {
-            reportId,
-            email,
-            status: "processing",
-            createdAt: new Date(),
-            userDataSize: dataSize,
-            userData: userData, // Store for future comparison
-            userAgent,
-            clientIP: clientIP !== "unknown" ? clientIP : undefined, // Only store if available
-            report: null, // Will be populated after processing
-        };
-
-        await reportsCollection.insertOne(reportDoc);
-
-        // 3. Generate JWT token for internal API
-        let internalToken;
-        try {
-            internalToken = generateInternalToken({ reportId, email });
-            console.log(`Generated internal JWT token for report ${reportId}`);
-        } catch (jwtError) {
-            console.error("Failed to generate internal JWT token:", jwtError);
-
-            // Update report status to failed
-            await reportsCollection.updateOne(
-                { reportId },
-                {
-                    $set: {
-                        status: "failed",
-                        error: "Internal authentication configuration error. Please contact support.",
-                        errorType: "internal_auth_failed",
-                        failedAt: new Date(),
-                        lastUpdated: new Date(),
-                    },
-                }
-            );
-
-            return NextResponse.json(
-                {
-                    error: "Internal server configuration error. Please try again later or contact support.",
-                    reportId,
-                },
-                { status: 500 }
-            );
-        }
-
-        // 4. Call internal API with improved error handling
-        const baseUrl =
-            process.env.NODE_ENV === "development"
-                ? "http://localhost:3000"
-                : `https://${process.env.VERCEL_URL || "lens.vael.ai"}`;
-
-        console.log(`Calling internal API: ${baseUrl}/api/internal/process-report`);
-
-        try {
-            const internalResponse = await fetch(`${baseUrl}/api/internal/process-report`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${internalToken}`,
-                },
-                body: JSON.stringify({
-                    reportId,
-                    email,
-                    userData,
-                }),
-            });
-
-            if (!internalResponse.ok) {
-                const errorText = await internalResponse.text();
-                console.error(`Internal API failed with status ${internalResponse.status}: ${errorText}`);
-
-                // Update report status to failed
-                await reportsCollection.updateOne(
-                    { reportId },
-                    {
-                        $set: {
-                            status: "failed",
-                            error: `Internal processing failed (${internalResponse.status}). Please try again.`,
-                            errorType: "internal_api_failed",
-                            failedAt: new Date(),
-                            lastUpdated: new Date(),
-                        },
-                    }
-                );
-
-                throw new Error(`Internal API failed: ${internalResponse.status} - ${errorText}`);
-            }
-
-            console.log(`Internal API call successful for report ${reportId}`);
-        } catch (fetchError) {
-            console.error("Failed to call internal API:", fetchError);
-
-            // Update report status to failed if not already updated
-            try {
-                const currentReport = await reportsCollection.findOne({ reportId });
-                if (currentReport && currentReport.status === "processing") {
-                    await reportsCollection.updateOne(
-                        { reportId },
-                        {
-                            $set: {
-                                status: "failed",
-                                error: "Failed to start report processing. Please try again.",
-                                errorType: "internal_api_connection_failed",
-                                failedAt: new Date(),
-                                lastUpdated: new Date(),
-                            },
-                        }
-                    );
-                }
-            } catch (updateError) {
-                console.error("Failed to update report status after internal API error:", updateError);
-            }
-
-            throw fetchError; // Re-throw to be caught by outer try-catch
-        }
-
-        // 5. Return immediate success response
         return NextResponse.json({
             success: true,
+            message: "Report processing started via internal API",
             reportId,
-            message: "Data received successfully. Processing started.",
-            redirectUrl: `/reports/${reportId}`,
-            estimatedProcessingTimeSeconds: 45,
         });
     } catch (error) {
-        console.error("Error in submit-data endpoint:", error);
+        console.error("Error in internal process-report endpoint:", error);
+
+        if (error instanceof Error && error.message.includes("Invalid token")) {
+            return NextResponse.json({ error: "Unauthorized - Invalid internal token" }, { status: 401 });
+        }
 
         if (error instanceof z.ZodError) {
             return NextResponse.json({ error: "Invalid request data", details: error.errors }, { status: 400 });

@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongo/mongodb";
 import { z } from "zod";
+import { extractEmailFromRequest, verifyReportAccess } from "@/lib/auth";
+import { headers } from "next/headers";
 
 // No caching for now
 
@@ -13,11 +16,33 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const resolvedParams = await params;
         const { reportId } = paramsSchema.parse(resolvedParams);
 
+        // Extract email for authentication
+        const email = extractEmailFromRequest(request);
+        if (!email) {
+            return NextResponse.json(
+                {
+                    error: "Authentication required - Please provide email via Authorization header or email parameter",
+                },
+                { status: 401 }
+            );
+        }
+
+        // Verify report access
+        const hasAccess = await verifyReportAccess(reportId, email);
+        if (!hasAccess) {
+            return NextResponse.json(
+                {
+                    error: "Access denied - You don't have permission to view this report",
+                },
+                { status: 403 }
+            );
+        }
+
         // Direct MongoDB query
         const client = await clientPromise;
         const db = client.db("lens");
         const reportsCollection = db.collection("reports");
-        const reportDoc = await reportsCollection.findOne({ reportId });
+        const reportDoc = await reportsCollection.findOne({ reportId, email }); // Include email in query for extra security
 
         if (!reportDoc) {
             return NextResponse.json({ error: "Report not found" }, { status: 404 });
@@ -45,6 +70,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         return NextResponse.json({
             success: true,
             report: cleanDoc.report,
+            comparisonInsights: cleanDoc.comparisonInsights || null,
             reportId: cleanDoc.reportId,
             email: cleanDoc.email,
             createdAt: cleanDoc.createdAt?.toISOString() || null,

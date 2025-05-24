@@ -84,6 +84,7 @@ function IndexPopup(): JSX.Element {
   const [lastReportDataSize, setLastReportDataSize] = useState<number>(0)
   const [canGenerateNewReport, setCanGenerateNewReport] =
     useState<boolean>(true)
+  const [isDataLoaded, setIsDataLoaded] = useState(false)
 
   // Define the boolean config keys to display in settings with color coding
   const BOOLEAN_USER_CONFIG_KEYS = [
@@ -195,18 +196,23 @@ function IndexPopup(): JSX.Element {
     loadConfig()
   }, [])
 
-  // Load collected data when data tab is selected
+  /**
+   * Handles tab switching and loads data when necessary
+   */
   useEffect(() => {
-    if (activeTab === "data") {
+    // Only load data when switching to data-related tabs
+    if (activeTab === "data" || activeTab === "overview") {
       loadCollectedData()
     }
   }, [activeTab])
 
   /**
-   * Loads all collected data from storage and updates the UI state.
-   * Used when switching to the data management tab.
+   * Loads collected data and calculates statistics with caching to prevent multiple calls.
    */
   const loadCollectedData = async () => {
+    // Don't load if already loading or loaded recently
+    if (dataLoading || isDataLoaded) return
+
     try {
       setDataLoading(true)
       const data = await getAllCollectedData()
@@ -236,6 +242,7 @@ function IndexPopup(): JSX.Element {
       setLastUpdated(lastUpdatedFormatted)
       setIsReportReady(reportIsReady)
       setCanGenerateNewReport(canGenerateNew)
+      setIsDataLoaded(true) // Mark as loaded to prevent unnecessary reloads
     } catch (error) {
       console.error("Error loading collected data:", error)
       setCollectedData(null)
@@ -372,6 +379,8 @@ function IndexPopup(): JSX.Element {
         setLastReportDataSize(0)
         setCanGenerateNewReport(true)
         setIsGeneratingReport(false)
+        // Reset data cache to force reload
+        resetDataCache()
         // Reload data to update UI
         loadCollectedData()
       } catch (error) {
@@ -580,6 +589,19 @@ function IndexPopup(): JSX.Element {
       const result = await response.json()
 
       if (result.success) {
+        // Handle cached report response
+        if (result.cached) {
+          console.log("Using cached report:", result.reportId)
+          const reportsUrl = USE_LOCAL_API
+            ? "http://localhost:3000"
+            : "https://lens.vael.ai"
+          chrome.tabs.create({
+            url: `${reportsUrl}/reports/${result.reportId}?email=${encodeURIComponent(userEmail)}`
+          })
+          setIsGeneratingReport(false)
+          return
+        }
+
         // Mark that a report was generated with this data size
         setLastReportDataSize(exactExportSize)
         setCanGenerateNewReport(false)
@@ -588,16 +610,28 @@ function IndexPopup(): JSX.Element {
           ? "http://localhost:3000"
           : "https://lens.vael.ai"
         chrome.tabs.create({
-          url: `${reportsUrl}/reports/${reportId}`
+          url: `${reportsUrl}/reports/${reportId}?email=${encodeURIComponent(userEmail)}`
         })
 
         // Loading state will be cleared when user navigates away or closes popup
       } else {
         console.error("Failed to submit data:", result.error)
         setIsGeneratingReport(false) // Reset loading state on error
-        alert(
-          `Failed to submit data for report: ${result.error || "Unknown error"}`
-        )
+
+        // Handle specific error types
+        if (response.status === 401) {
+          alert(
+            "Authentication failed. Please update the extension or contact support."
+          )
+        } else if (result.error?.includes("Data hasn't changed enough")) {
+          alert(
+            `Not enough new data: ${result.error}\n\nCurrent: ${result.currentDataSize}\nPrevious: ${result.previousDataSize}\nSimilarity: ${result.similarity}`
+          )
+        } else {
+          alert(
+            `Failed to submit data for report: ${result.error || "Unknown error"}`
+          )
+        }
       }
     } catch (error) {
       console.error("Error generating report:", error)
@@ -608,6 +642,13 @@ function IndexPopup(): JSX.Element {
         alert("An unknown error occurred while generating the report.")
       }
     }
+  }
+
+  /**
+   * Reset data loaded flag when generating reports or clearing data
+   */
+  const resetDataCache = () => {
+    setIsDataLoaded(false)
   }
 
   if (loading) {

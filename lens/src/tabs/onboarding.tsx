@@ -48,7 +48,7 @@ const OnboardingPage = () => {
     setIsLoading(true)
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/save_email`, {
+      const response = await fetch(`${API_BASE_URL}/api/save-email`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

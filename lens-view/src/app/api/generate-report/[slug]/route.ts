@@ -109,7 +109,7 @@ export async function POST(request: NextRequest, { params }: { params: { slug: s
         }
 
         // Initialize Gemini model
-        const model = google("gemini-2.0-flash-exp");
+        const model = google("gemini-2.5-flash-preview-05-20");
 
         // Generate structured report using AI
         const { object: report } = await generateObject({

@@ -1422,13 +1422,7 @@ function OptionsPage() {
                               data={collectedData}
                               collapse={false}
                               rootName="raw_data"
-                              theme={{
-                                ...githubLightTheme,
-                                base00: "#fafafa",
-                                fontSize: "12px",
-                                indentWidth: 2,
-                                valueGap: 0
-                              }}
+                              theme={githubLightTheme}
                               searchText={searchText}
                               searchFilter="all"
                               searchDebounceTime={100}

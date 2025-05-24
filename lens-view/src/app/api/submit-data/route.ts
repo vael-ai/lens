@@ -196,12 +196,12 @@ export async function POST(request: NextRequest) {
         const validatedData = submitDataSchema.parse(body);
         const { reportId, email, userData } = validatedData;
 
-        // Validate data size (minimum 150MB for reports)
+        // Validate data size (minimum 10MB for reports)
         const dataSize = JSON.stringify(userData).length;
-        if (dataSize < 150 * 1024 * 1024) {
-            // 150MB in bytes
+        if (dataSize < 10 * 1024 * 1024) {
+            // 10MB in bytes
             return NextResponse.json(
-                { error: "Insufficient data for report generation. Minimum 150MB required." },
+                { error: "Insufficient data for report generation. Minimum 10MB required." },
                 { status: 400 }
             );
         }

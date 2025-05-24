@@ -437,9 +437,14 @@ function IndexPopup(): JSX.Element {
       // Try API call if needed
       if (!USE_LOCAL_API) {
         try {
-          const encodedEmail = encodeURIComponent(emailToSave)
-          fetch(`${API_BASE_URL}/api/save-email/${encodedEmail}`, {
-            method: "POST"
+          fetch(`${API_BASE_URL}/api/save-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              email: emailToSave
+            })
           }).catch((apiError) => {
             console.error("API error:", apiError)
           })
@@ -551,10 +556,10 @@ function IndexPopup(): JSX.Element {
   if (showOnboarding) {
     return (
       <div className="p-4 w-[400px] h-[550px] flex flex-col items-center justify-center bg-gradient-to-br from-purple-50 via-indigo-50 to-purple-100 dark:from-slate-900 dark:via-purple-900/30 dark:to-indigo-900/50 animate-gradient-x">
-        <div className="w-full max-w-sm shadow-xl border border-purple-300 dark:border-purple-700 rounded-lg bg-white dark:bg-slate-800/90 p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-2xl">
+        <div className="w-full max-w-sm p-6 transition-all duration-300 bg-white border border-purple-300 rounded-lg shadow-xl dark:border-purple-700 dark:bg-slate-800/90 backdrop-blur-sm hover:shadow-2xl">
           <div className="flex justify-center mb-2">
             {/* Lens Logo */}
-            <div className="w-20 h-20 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg">
+            <div className="flex items-center justify-center w-20 h-20 rounded-full shadow-lg bg-gradient-to-r from-purple-500 to-indigo-600">
               <svg
                 viewBox="0 0 24 24"
                 className="w-12 h-12 text-white"
@@ -571,11 +576,11 @@ function IndexPopup(): JSX.Element {
               </svg>
             </div>
           </div>
-          <h2 className="text-center text-xl font-bold mb-3 text-purple-600 dark:text-purple-400 animate-fade-in">
+          <h2 className="mb-3 text-xl font-bold text-center text-purple-600 dark:text-purple-400 animate-fade-in">
             Welcome to Lens by Vael AI
           </h2>
-          <div className="bg-slate-50 dark:bg-slate-700/30 p-3 rounded-lg mb-4 text-center">
-            <p className="text-sm text-slate-700 dark:text-slate-300 mb-2">
+          <div className="p-3 mb-4 text-center rounded-lg bg-slate-50 dark:bg-slate-700/30">
+            <p className="mb-2 text-sm text-slate-700 dark:text-slate-300">
               Your AI-powered browser companion that collects context to
               generate personalized insights and reports.
             </p>
@@ -592,12 +597,12 @@ function IndexPopup(): JSX.Element {
                 placeholder="you@example.com"
                 value={onboardingEmailInput}
                 onChange={(e) => setOnboardingEmailInput(e.target.value)}
-                className="w-full p-3 pl-10 border border-purple-300 dark:border-purple-600 rounded-md focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-transparent transition-all dark:bg-slate-700 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
+                className="w-full p-3 pl-10 transition-all border border-purple-300 rounded-md dark:border-purple-600 focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-transparent dark:bg-slate-700 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500"
               />
               <div className="absolute left-3 top-3.5 text-purple-500 dark:text-purple-400">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
+                  className="w-5 h-5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor">
@@ -639,7 +644,7 @@ function IndexPopup(): JSX.Element {
           value={activeTab}
           onValueChange={setActiveTab}
           className="flex flex-col flex-1 -mb-2">
-          <TabsList className="grid w-full grid-cols-2 mb-3 h-10 bg-slate-100/70 dark:bg-slate-800/60 backdrop-blur-sm rounded-md p-1 shadow-sm">
+          <TabsList className="grid w-full h-10 grid-cols-2 p-1 mb-3 rounded-md shadow-sm bg-slate-100/70 dark:bg-slate-800/60 backdrop-blur-sm">
             <TabsTrigger
               value="overview"
               className="text-xs h-8 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-purple-700 data-[state=active]:shadow-sm dark:data-[state=active]:text-purple-400 text-slate-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-300 transition-all duration-200 font-medium">
@@ -654,12 +659,12 @@ function IndexPopup(): JSX.Element {
           {/* Overview Tab */}
           <TabsContent
             value="overview"
-            className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
-            <div className="bg-white dark:bg-slate-800/60 rounded-lg overflow-hidden shadow-md transition-all duration-300 hover:shadow-lg border border-purple-100/50 dark:border-purple-900/30">
-              <div className="p-3 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-b border-purple-100/50 dark:border-purple-900/30 flex items-center">
+            className="flex-1 pr-1 space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+            <div className="overflow-hidden transition-all duration-300 bg-white border rounded-lg shadow-md dark:bg-slate-800/60 hover:shadow-lg border-purple-100/50 dark:border-purple-900/30">
+              <div className="flex items-center p-3 border-b bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-purple-100/50 dark:border-purple-900/30">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-2 text-purple-500 dark:text-purple-400"
+                  className="w-4 h-4 mr-2 text-purple-500 dark:text-purple-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor">
@@ -680,9 +685,9 @@ function IndexPopup(): JSX.Element {
                     {recentWebsites.slice(0, 3).map((site, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700/40 rounded-md shadow-sm transition-all duration-200 hover:shadow-md hover:bg-purple-50/50 dark:hover:bg-purple-900/20 border border-transparent hover:border-purple-200 dark:hover:border-purple-800/30">
+                        className="flex items-center justify-between p-2 transition-all duration-200 border border-transparent rounded-md shadow-sm bg-slate-50 dark:bg-slate-700/40 hover:shadow-md hover:bg-purple-50/50 dark:hover:bg-purple-900/20 hover:border-purple-200 dark:hover:border-purple-800/30">
                         <div className="flex items-center overflow-hidden">
-                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 dark:from-purple-900/30 dark:to-indigo-900/30 flex items-center justify-center mr-2 text-purple-500 dark:text-purple-400">
+                          <div className="flex items-center justify-center flex-shrink-0 w-6 h-6 mr-2 text-purple-500 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 dark:from-purple-900/30 dark:to-indigo-900/30 dark:text-purple-400">
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               className="h-3.5 w-3.5"
@@ -701,7 +706,7 @@ function IndexPopup(): JSX.Element {
                             href={site.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="truncate hover:underline text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 font-medium"
+                            className="font-medium text-purple-600 truncate hover:underline hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300"
                             title={site.name}>
                             {site.name.length > 30
                               ? `${site.name.substring(0, 27)}...`
@@ -721,10 +726,10 @@ function IndexPopup(): JSX.Element {
                     )}
                   </div>
                 ) : (
-                  <div className="py-6 flex flex-col items-center justify-center text-center">
+                  <div className="flex flex-col items-center justify-center py-6 text-center">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-10 w-10 text-slate-300 dark:text-slate-600 mb-2"
+                      className="w-10 h-10 mb-2 text-slate-300 dark:text-slate-600"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor">
@@ -743,11 +748,11 @@ function IndexPopup(): JSX.Element {
               </div>
             </div>
             {/* Settings merged into Overview */}
-            <div className="bg-white dark:bg-slate-800/60 rounded-lg overflow-hidden shadow-md transition-all duration-300 hover:shadow-lg border border-purple-100/50 dark:border-purple-900/30">
-              <div className="p-3 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-b border-purple-100/50 dark:border-purple-900/30 flex items-center">
+            <div className="overflow-hidden transition-all duration-300 bg-white border rounded-lg shadow-md dark:bg-slate-800/60 hover:shadow-lg border-purple-100/50 dark:border-purple-900/30">
+              <div className="flex items-center p-3 border-b bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-purple-100/50 dark:border-purple-900/30">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-2 text-purple-500 dark:text-purple-400"
+                  className="w-4 h-4 mr-2 text-purple-500 dark:text-purple-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor">
@@ -815,7 +820,7 @@ function IndexPopup(): JSX.Element {
                           <div>
                             <label
                               htmlFor={setting.key}
-                              className="text-xs text-slate-700 dark:text-slate-300 font-medium cursor-pointer">
+                              className="text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300">
                               {getSettingLabel(setting.key)}
                             </label>
                             <div
@@ -850,7 +855,7 @@ function IndexPopup(): JSX.Element {
                 <div className="text-sm font-semibold">Manage Domains</div>
               </div>
               <div className="p-3 pt-0 text-xs">
-                <div className="flex items-center space-x-2 mb-2">
+                <div className="flex items-center mb-2 space-x-2">
                   <input
                     type="text"
                     placeholder={
@@ -876,7 +881,7 @@ function IndexPopup(): JSX.Element {
                     variant={
                       isCurrentDomainBlacklisted ? "secondary" : "outline"
                     }
-                    className="w-full h-8 text-xs mb-2"
+                    className="w-full h-8 mb-2 text-xs"
                     style={{ borderColor: "#938EEA", color: "#938EEA" }}>
                     {isCurrentDomainBlacklisted
                       ? `Unblock ${currentDomain}`
@@ -886,7 +891,7 @@ function IndexPopup(): JSX.Element {
                 <p className="text-[10px] mb-1" style={{ color: "#938EEA" }}>
                   Blocked sites ({config?.blacklistedDomains.length || 0}):
                 </p>
-                <div className="max-h-20 overflow-y-auto space-y-1 pr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+                <div className="pr-1 space-y-1 overflow-y-auto max-h-20 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
                   {config?.blacklistedDomains.map((d) => (
                     <div
                       key={d}
@@ -915,12 +920,12 @@ function IndexPopup(): JSX.Element {
           {/* Data Tab */}
           <TabsContent
             value="data"
-            className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
-            <div className="bg-white dark:bg-slate-800/60 rounded-lg overflow-hidden shadow-md transition-all duration-300 hover:shadow-lg border border-purple-100/50 dark:border-purple-900/30">
-              <div className="p-3 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-b border-purple-100/50 dark:border-purple-900/30 flex items-center">
+            className="flex-1 pr-1 space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+            <div className="overflow-hidden transition-all duration-300 bg-white border rounded-lg shadow-md dark:bg-slate-800/60 hover:shadow-lg border-purple-100/50 dark:border-purple-900/30">
+              <div className="flex items-center p-3 border-b bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-purple-100/50 dark:border-purple-900/30">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-2 text-purple-500 dark:text-purple-400"
+                  className="w-4 h-4 mr-2 text-purple-500 dark:text-purple-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor">
@@ -935,13 +940,13 @@ function IndexPopup(): JSX.Element {
                   Data Summary & Actions
                 </div>
               </div>
-              <div className="p-4 text-xs space-y-3">
+              <div className="p-4 space-y-3 text-xs">
                 <div className="grid grid-cols-3 gap-3 mb-2">
-                  <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg border border-purple-100 dark:border-purple-800/30 flex flex-col items-center justify-center transition-transform duration-200 hover:scale-105">
-                    <div className="text-purple-500 dark:text-purple-400 mb-1">
+                  <div className="flex flex-col items-center justify-center p-3 transition-transform duration-200 border border-purple-100 rounded-lg bg-purple-50 dark:bg-purple-900/20 dark:border-purple-800/30 hover:scale-105">
+                    <div className="mb-1 text-purple-500 dark:text-purple-400">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
+                        className="w-5 h-5"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor">
@@ -956,15 +961,15 @@ function IndexPopup(): JSX.Element {
                     <span className="text-xs text-slate-500 dark:text-slate-400">
                       Websites
                     </span>
-                    <span className="font-bold text-sm text-slate-700 dark:text-slate-300">
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
                       {websiteCount}
                     </span>
                   </div>
-                  <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg border border-indigo-100 dark:border-indigo-800/30 flex flex-col items-center justify-center transition-transform duration-200 hover:scale-105">
-                    <div className="text-indigo-500 dark:text-indigo-400 mb-1">
+                  <div className="flex flex-col items-center justify-center p-3 transition-transform duration-200 border border-indigo-100 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-800/30 hover:scale-105">
+                    <div className="mb-1 text-indigo-500 dark:text-indigo-400">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
+                        className="w-5 h-5"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor">
@@ -979,15 +984,15 @@ function IndexPopup(): JSX.Element {
                     <span className="text-xs text-slate-500 dark:text-slate-400">
                       Size
                     </span>
-                    <span className="font-bold text-sm text-slate-700 dark:text-slate-300">
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
                       {dataSize}
                     </span>
                   </div>
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800/30 flex flex-col items-center justify-center transition-transform duration-200 hover:scale-105">
-                    <div className="text-blue-500 dark:text-blue-400 mb-1">
+                  <div className="flex flex-col items-center justify-center p-3 transition-transform duration-200 border border-blue-100 rounded-lg bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800/30 hover:scale-105">
+                    <div className="mb-1 text-blue-500 dark:text-blue-400">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
+                        className="w-5 h-5"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor">
@@ -1010,12 +1015,12 @@ function IndexPopup(): JSX.Element {
                   </div>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700/50">
+                <div className="p-3 border rounded-lg bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50">
                   {isReportReady ? (
-                    <div className="flex items-center text-green-600 dark:text-green-400 mb-2">
+                    <div className="flex items-center mb-2 text-green-600 dark:text-green-400">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 mr-1"
+                        className="w-4 h-4 mr-1"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor">
@@ -1031,10 +1036,10 @@ function IndexPopup(): JSX.Element {
                       </p>
                     </div>
                   ) : (
-                    <div className="flex items-center text-orange-600 dark:text-orange-400 mb-2">
+                    <div className="flex items-center mb-2 text-orange-600 dark:text-orange-400">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 mr-1"
+                        className="w-4 h-4 mr-1"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor">
@@ -1059,7 +1064,7 @@ function IndexPopup(): JSX.Element {
                     {dataLoading ? (
                       <span className="flex items-center">
                         <svg
-                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                          className="w-4 h-4 mr-2 -ml-1 text-white animate-spin"
                           xmlns="http://www.w3.org/2000/svg"
                           fill="none"
                           viewBox="0 0 24 24">
@@ -1085,10 +1090,10 @@ function IndexPopup(): JSX.Element {
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       onClick={handleExportData}
-                      className="h-9 text-xs font-medium bg-white hover:bg-slate-50 dark:bg-slate-700 dark:hover:bg-slate-600 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800/30 transition-all duration-200 shadow-sm">
+                      className="text-xs font-medium text-purple-600 transition-all duration-200 bg-white border border-purple-200 shadow-sm h-9 hover:bg-slate-50 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-purple-400 dark:border-purple-800/30">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 mr-1"
+                        className="w-4 h-4 mr-1"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor">
@@ -1103,10 +1108,10 @@ function IndexPopup(): JSX.Element {
                     </Button>
                     <Button
                       onClick={handleClearData}
-                      className="h-9 text-xs font-medium bg-white hover:bg-red-50 dark:bg-slate-700 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/30 transition-all duration-200 shadow-sm">
+                      className="text-xs font-medium text-red-600 transition-all duration-200 bg-white border border-red-200 shadow-sm h-9 hover:bg-red-50 dark:bg-slate-700 dark:hover:bg-red-900/20 dark:text-red-400 dark:border-red-800/30">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 mr-1"
+                        className="w-4 h-4 mr-1"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor">
@@ -1125,7 +1130,7 @@ function IndexPopup(): JSX.Element {
                     <div className="flex items-center justify-center text-green-600 dark:text-green-400 mt-2 text-center bg-green-50 dark:bg-green-900/20 p-1.5 rounded-md border border-green-200 dark:border-green-800/30 animate-pulse">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 mr-1"
+                        className="w-4 h-4 mr-1"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor">
@@ -1146,10 +1151,10 @@ function IndexPopup(): JSX.Element {
             </div>
             <Button
               onClick={() => openAdvancedSettingsWithTab("data")}
-              className="w-full h-9 text-xs font-medium bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-purple-600 dark:text-purple-400 shadow-sm transition-all duration-200 rounded-lg flex items-center justify-center gap-2">
+              className="flex items-center justify-center w-full gap-2 text-xs font-medium text-purple-600 transition-all duration-200 bg-white border rounded-lg shadow-sm h-9 dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 dark:text-purple-400">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
+                className="w-4 h-4"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor">
@@ -1175,7 +1180,7 @@ function IndexPopup(): JSX.Element {
             href="https://lens.vael.ai"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 underline">
+            className="text-purple-600 underline hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300">
             Vael AI
           </a>{" "}
           v{packageInfo.version}

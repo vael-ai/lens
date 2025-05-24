@@ -9,6 +9,13 @@ import type {
   WebsiteData
 } from "../types/data"
 import { collectDeviceInfo } from "./collectors/device"
+/**
+ * Sends collected data to the Lens by Vael AI Context Bank service
+ * Main entry point for sending data to the server
+ * @param data - The collected data to send
+ * @returns Promise resolving to true if successful, false otherwise
+ */
+import { MAX_DATA_COLLECTION_BYTES } from "./constants"
 import { exportCollectedData } from "./dataCollection"
 import {
   createElementPath,
@@ -19,7 +26,7 @@ import { generateUUID, isValidUrl } from "./helpers"
 import { getUserConfig, getUserId } from "./userPreferences"
 
 // Default API endpoint
-const API_BASE_URL = "https://api.vael.ai"
+const API_BASE_URL = "https://api.lens.vael.ai"
 
 // Enable testing mode - only store locally, don't send to server
 const TESTING_MODE = true
@@ -891,16 +898,27 @@ export const clearAllCollectedData = async (): Promise<boolean> => {
   }
 }
 
-/**
- * Sends collected data to the Vael AI Context Bank service
- * Main entry point for sending data to the server
- * @param data - The collected data to send
- * @returns Promise resolving to true if successful, false otherwise
- */
 export const sendCollectedData = async (
   data: CollectedData
 ): Promise<boolean> => {
   try {
+    // Check if current data size exceeds the maximum limit
+    const currentData = await safeStorageOp(
+      async () => storage.get<CollectedData>(COLLECTED_DATA_KEY),
+      null
+    )
+    if (currentData) {
+      const currentDataSize = JSON.stringify(currentData).length
+      if (currentDataSize >= MAX_DATA_COLLECTION_BYTES) {
+        console.warn(
+          `Max data collection limit of ${MAX_DATA_COLLECTION_BYTES / (1024 * 1024)}MB reached. New data will not be saved.`
+        )
+        // Optionally, notify the background script or UI
+        // chrome.runtime.sendMessage({ type: "MAX_DATA_LIMIT_REACHED" });
+        return false // Indicate that data was not saved
+      }
+    }
+
     // In testing mode, just store the data locally
     if (TESTING_MODE) {
       await safeStorageOp(

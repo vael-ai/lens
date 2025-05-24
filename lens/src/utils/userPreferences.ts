@@ -13,26 +13,19 @@ try {
   } as unknown as Storage
 }
 
-// Default configuration
-export const DEFAULT_CONFIG = {
-  // Master toggle for data collection
-  masterCollectionEnabled: true,
-
-  // Main toggles for data collection types
+// Default configuration if none exists
+const DEFAULT_CONFIG: UserConfig = {
+  masterCollectionEnabled: true, // Default to data collection being enabled (changed as requested)
   collectPageMetadata: true,
   collectInteractions: true,
   collectDeviceInfo: true,
   collectContent: true,
-
-  // Domain-specific toggles
+  collectHistory: true,
+  collectTabActivity: true,
   collectEcommerce: true,
   collectTravel: true,
   collectProductivity: true,
-
-  // Privacy controls
-  collectAnalytics: true, // Anonymous usage analytics for the extension itself
-
-  // Blacklisted domains (default sensitive domains)
+  collectAnalytics: true,
   blacklistedDomains: [
     // Banking
     "chase.com",
@@ -102,12 +95,15 @@ export interface UserConfig {
   collectInteractions: boolean
   collectDeviceInfo: boolean
   collectContent: boolean
+  collectHistory: boolean
+  collectTabActivity: boolean
   collectEcommerce: boolean
   collectTravel: boolean
   collectProductivity: boolean
   collectAnalytics: boolean
   blacklistedDomains: string[]
   whitelistedDomains: string[]
+  initialized?: boolean
 }
 
 // Keys for storage

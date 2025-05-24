@@ -209,7 +209,7 @@ function updateDocumentation() {
   console.log(
     `   future algorithm to understand, rank, and find similarities in`
   )
-  console.log(`   the data collected by Vael AI Context Bank.`)
+  console.log(`   the data collected by Lens by Vael AI Context Bank.`)
 }
 
 // Run the update function

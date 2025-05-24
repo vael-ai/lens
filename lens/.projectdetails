@@ -1,0 +1,92 @@
+Project Name: Vael AI Browser Extension
+
+Overall Goal:
+Develop a Manifest V3 compatible browser extension for Chrome (and other Chromium browsers) that collects user browsing data across specified categories (shopping, travel, productivity). This data will be used to generate personalized reports and insights for the user. The extension must prioritize user privacy, consent, and data control.
+
+Core Functionalities:
+
+(Note: API and report URLs mentioned in this document, such as `https://lens.vael.ai`, refer to the production environment. During development, if the `PLASMO_PUBLIC_USE_LOCAL_API` environment variable is set to `'true'`, the extension will use `http://localhost:3000` as the base URL for these endpoints.)
+
+1.  Data Collection:
+    *   Categories:
+        *   Browser History (URLs, timestamps)
+        *   Page Metadata (titles, descriptions, keywords)
+        *   User Interactions (clicks, scrolls, form interactions - anonymized where necessary)
+        *   Tab Activity (tab open/close, active tab duration)
+        *   Page Content (selected text, summarized content - with user consent per type)
+        *   Device Information (browser type, OS - generic, non-identifying)
+        *   Extension Usage Analytics (internal metrics for improving the extension)
+    *   Domain-Specific Collection: Logic to tailor data collection based on domain type (e.g., enhanced product detail collection on e-commerce sites).
+    *   Collection Control: Master toggle for enabling/disabling all collection. Granular toggles for each data category and domain type (e-commerce, travel, productivity).
+
+2.  User Onboarding and Consent:
+    *   Initial State: On first launch, the extension presents an onboarding flow.
+    *   Email Collection: Users are prompted to enter their email. This email is primarily for associating the collected data with the user for report generation and accessing their personalized insights dashboard.
+    *   Consent: Clear consent is obtained for data collection. Users must agree to the terms before any data is collected.
+    *   Storage: The user's email and onboarding completion status are stored locally in the browser's extension storage.
+    *   API Email Submission (New):
+        *   Process: During onboarding, after email validation, an attempt is made to send the user's email via a POST request to `https://lens.vael.ai/api/save-email/{user_email}`.
+        *   Current Behavior: If this API call fails (network error, server error), the error is logged to the console. However, the user can still proceed with using the extension, and their email is still saved locally for report generation purposes.
+        *   TODO: Harden this API integration. Implement robust error handling, confirm final API endpoint details and requirements (e.g., authentication, CSRF), and define behavior for persistent API failures.
+
+3.  Report Generation (New Flow):
+    *   Trigger: A "Generate Report" button is available in the extension's popup UI.
+    *   Data Threshold: The button is enabled only after the user has accumulated sufficient browsing data (e.g., 10MB, with a server-side check for 150MB for actual processing).
+    *   Process:
+        1.  UUID Generation: When the user clicks "Generate Report", the extension generates a unique `reportId` using `crypto.randomUUID()`.
+        2.  Data Aggregation: The extension retrieves the stored `userEmail` and the collected `userData`.
+        3.  API Submission: The extension sends a `POST` request to `https://lens.vael.ai/api/submit-data` with a JSON payload containing `reportId`, `email`, and `userData`.
+        4.  Redirection: If the API submission is successful, the extension opens a new tab to `https://lens.vael.ai/reports/${reportId}`.
+        5.  Report Handling: The actual report processing, status polling, and display are handled by the `lens.vael.ai` web application on that report page.
+    *   Maximum Data Collection: The extension will stop collecting new data once the total stored data reaches approximately 150MB to manage storage.
+    *   Data Display: The popup shows the current accumulated data size to inform the user about their progress towards the 150MB threshold.
+
+4.  User Interface (Popup - [popup.tsx](cci:7://file:///c:/Users/aryan/Documents/GitHub/lens-new/lens/src/popup.tsx:0:0-0:0)):
+    *   Tabs: "Collection Settings", "Data Management", "About".
+    *   Collection Settings:
+        *   Master collection toggle.
+        *   Status of current URL (blacklisted/whitelisted).
+        *   Buttons to blacklist/whitelist current domain.
+        *   Accordion for individual data type toggles (Page Metadata, User Interactions, etc.).
+        *   Link to "Advanced Collection Settings" (options page).
+    *   Data Management:
+        *   Buttons: "Export all data to JSON", "Clear All Data", "Generate Report".
+        *   Display: Total websites visited, current data size, last updated timestamp.
+        *   List of recently visited websites (brief overview).
+        *   Link to "Advanced Data Viewer" (options page).
+    *   Onboarding UI: A simple form to collect the user's email if onboarding is not complete.
+
+5.  Options Page (`options.html` / `options.tsx`):
+    *   Advanced Collection Settings: Detailed configuration for data types, domain-specific collection.
+    *   Blacklist/Whitelist Management: View and manage blacklisted/whitelisted domains.
+    *   Advanced Data Viewer: A more detailed view of collected data.
+    *   Privacy Controls: Links to privacy policy, data management explanations.
+
+6.  Data Management & Storage:
+    *   Local Storage: Uses `chrome.storage.local` via `@plasmohq/storage` for all collected data, user configuration, email, and onboarding status.
+    *   Key Constants: `COLLECTED_DATA_KEY`, `USER_EMAIL_KEY`, `ONBOARDING_COMPLETE_KEY`, `USER_CONFIG_KEY`, `DATA_SIZE_THRESHOLD_BYTES`.
+    *   Data Export: Users can export their collected data as a JSON file.
+    *   Data Wipe: Users can clear all their locally stored data.
+
+7.  Privacy & Security:
+    *   User Consent: Explicit consent for data collection. Clear toggles and explanations.
+    *   Default Blacklist: Pre-configured blacklist for sensitive domains (e.g., banking, healthcare).
+    *   Transparency: Clear indication of what data is being collected and why.
+    *   Email Handling & Report Association: Email is used for user identification. For report generation, a unique `reportId` (UUID) is generated by the extension. This `reportId` and the user's `email` are sent to the backend, allowing the backend to associate the report with the user without exposing the email in the report URL.
+
+8.  Technical Stack & Architecture:
+    *   Manifest V3.
+    *   TypeScript.
+    *   React for UI components.
+    *   Plasmo framework.
+    *   `@plasmohq/storage` for storage abstraction.
+    *   Background Script (`background.ts`): Manages tab state, icon updates, alarms, and long-lived processes.
+    *   Content Script (`content.tsx`): Injects into pages to collect data and interact with the DOM.
+    *   Messaging System: For communication between content scripts, popup, and background script.
+
+Future Considerations (Not yet implemented unless specified above):
+*   More robust email ciphering/tokenization if required by the backend.
+*   Direct integration with Vercel AI SDK (Gemini) within the extension (currently, report generation is offloaded to a web service).
+*   "Better Auth integration" - Could involve more formal user accounts if needed beyond simple email association.
+
+This project aims to provide a powerful yet privacy-respecting tool for users to understand and leverage their browsing data.

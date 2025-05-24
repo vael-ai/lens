@@ -77,9 +77,9 @@ Vael Context Bank puts you in control of your data:
 
 ## Developer Integration
 
-Vael Context Bank is designed to work with the Vael AI platform, providing context to AI agents that have been granted access by the user.
+Lens by Vael AI Context Bank is designed to work with the Lens by Vael AI platform, providing context to AI agents that have been granted access by the user.
 
-For integration details, visit [Vael AI Developer Documentation](https://vael.ai/docs).
+For integration details, visit [Lens by Vael AI Developer Documentation](https://lens.vael.ai/docs).
 
 ## Contributing
 
@@ -97,6 +97,6 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## Contact
 
-Vael AI Team - [contact@vael.ai](mailto:contact@vael.ai)
+Lens by Vael AI Team - [contact@lens.vael.ai](mailto:contact@lens.vael.ai)
 
 Project Link: [https://github.com/vael-ai/context-bank-extension](https://github.com/vael-ai/context-bank-extension)

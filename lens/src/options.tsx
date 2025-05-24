@@ -107,7 +107,7 @@ function OptionsPage() {
       about: "About"
     }
 
-    document.title = `Vael AI - ${tabTitles[activeTab as keyof typeof tabTitles] || "Settings"}`
+    document.title = `Lens by Vael AI - ${tabTitles[activeTab as keyof typeof tabTitles] || "Settings"}`
   }, [activeTab])
 
   // Load collected data when data tab is selected
@@ -396,11 +396,11 @@ function OptionsPage() {
       <header className="mb-4 md:mb-8">
         <div className="flex flex-col mb-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="flex flex-col mb-2 text-2xl font-bold sm:flex-row sm:items-center md:text-4xl sm:mb-0">
-            <span className="mr-2">Vael AI Context Bank</span>
+            <span className="mr-2">Lens by Vael AI Context Bank</span>
             <Button
               variant="link"
               className="h-6 p-0 ml-0 text-sm underline sm:ml-3"
-              onClick={() => window.open("https://vael.ai", "_blank")}>
+              onClick={() => window.open("https://lens.vael.ai", "_blank")}>
               What is this?
             </Button>
           </h1>
@@ -497,8 +497,8 @@ function OptionsPage() {
                   Data Collection Settings
                 </CardTitle>
                 <CardDescription className="text-lg">
-                  Control what types of data Vael AI collects from your browsing
-                  activity
+                  Control what types of data Lens by Vael AI collects from your
+                  browsing activity
                 </CardDescription>
               </CardHeader>
               <CardContent className="px-6 py-8 space-y-8">
@@ -913,7 +913,7 @@ function OptionsPage() {
                   Domain Management
                 </CardTitle>
                 <CardDescription className="text-base md:text-lg">
-                  Control which websites Vael AI can collect data from
+                  Control which websites Lens by Vael AI can collect data from
                 </CardDescription>
               </CardHeader>
               <CardContent className="px-4 py-6 space-y-6 md:px-6 md:py-8 md:space-y-8">
@@ -1036,7 +1036,7 @@ function OptionsPage() {
               <CardHeader className="pb-4 border-b">
                 <CardTitle className="text-3xl">Data Management</CardTitle>
                 <CardDescription className="text-lg">
-                  View, export, and manage the data collected by Vael AI
+                  View, export, and manage the data collected by Lens by Vael AI
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-5">
@@ -1185,8 +1185,8 @@ function OptionsPage() {
                       No Data Collected Yet
                     </h3>
                     <p className="mt-2 text-sm text-gray-500">
-                      Browse the web with Vael AI Context Bank enabled to
-                      collect data.
+                      Browse the web with Lens by Vael AI Context Bank enabled
+                      to collect data.
                     </p>
                   </div>
                 ) : (
@@ -1487,7 +1487,7 @@ function OptionsPage() {
             <Card>
               <CardHeader className="pb-4 border-b">
                 <CardTitle className="text-3xl">
-                  About Vael AI Context Bank
+                  About Lens by Vael AI Context Bank
                 </CardTitle>
                 <CardDescription className="text-lg">
                   Learn more about the extension, how it works, and who created
@@ -1496,9 +1496,11 @@ function OptionsPage() {
               </CardHeader>
               <CardContent className="p-6 space-y-8">
                 <div className="space-y-4">
-                  <h3 className="text-xl font-medium">What is Vael AI?</h3>
+                  <h3 className="text-xl font-medium">
+                    What is Lens by Vael AI?
+                  </h3>
                   <p className="text-gray-700">
-                    Vael AI Context Bank is a browser extension that
+                    Lens by Vael AI Context Bank is a browser extension that
                     intelligently collects and organizes information from your
                     browsing activity to provide personalized context to AI
                     agents and assistants.
@@ -1582,7 +1584,7 @@ function OptionsPage() {
                     <ul className="space-y-2">
                       <li>
                         <a
-                          href="https://docs.vael.ai"
+                          href="https://docs.lens.vael.ai"
                           target="_blank"
                           className="flex items-center text-blue-600 hover:underline">
                           <svg
@@ -1624,7 +1626,7 @@ function OptionsPage() {
                       </li>
                       <li>
                         <a
-                          href="https://vael.ai/privacy"
+                          href="https://lens.vael.ai/privacy"
                           target="_blank"
                           className="flex items-center text-blue-600 hover:underline">
                           <svg
@@ -1653,7 +1655,7 @@ function OptionsPage() {
                     <ul className="space-y-2">
                       <li>
                         <a
-                          href="mailto:support@vael.ai"
+                          href="mailto:support@lens.vael.ai"
                           className="flex items-center text-blue-600 hover:underline">
                           <svg
                             className="w-4 h-4 mr-2"
@@ -1668,7 +1670,7 @@ function OptionsPage() {
                               d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                             />
                           </svg>
-                          support@vael.ai
+                          support@lens.vael.ai
                         </a>
                       </li>
                       <li>
@@ -1718,10 +1720,10 @@ function OptionsPage() {
                 </div>
 
                 <div className="p-4 mt-6 text-center text-gray-500 border rounded-lg bg-gray-50">
-                  <p>Vael AI Context Bank v{packageInfo.version}</p>
+                  <p>Lens by Vael AI Context Bank v{packageInfo.version}</p>
                   <p className="mt-1 text-sm">
-                    &copy; {new Date().getFullYear()} Vael AI, Inc. All rights
-                    reserved.
+                    &copy; {new Date().getFullYear()} Lens by Vael AI, Inc. All
+                    rights reserved.
                   </p>
                 </div>
               </CardContent>

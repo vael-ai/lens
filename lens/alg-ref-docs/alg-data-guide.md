@@ -1,8 +1,8 @@
-# Vael AI Context Bank Data Processing Guidelines
+# Lens by Vael AI Context Bank Data Processing Guidelines
 
 ## Purpose of This Document
 
-This document serves as a reference for the future algorithm or system that processes data collected by the Vael AI Context Bank browser extension. It outlines key aspects of the data structure, formatting rules, special fields that require specific handling, and any other nuances to understand the data. When developing data processing algorithms, ML models, or analysis systems, should be able to refer to this document to ensure proper interpretation of the collected data.
+This document serves as a reference for the future algorithm or system that processes data collected by the Lens by Vael AI Context Bank browser extension. It outlines key aspects of the data structure, formatting rules, special fields that require specific handling, and any other nuances to understand the data. When developing data processing algorithms, ML models, or analysis systems, should be able to refer to this document to ensure proper interpretation of the collected data.
 
 **Note for Future AI Assistants and Algorithms**: This document is designed to help systems understand and process the browsing data collected by Vael. It provides critical information about how to:
 

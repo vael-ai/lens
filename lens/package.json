@@ -1,9 +1,9 @@
 {
   "name": "vael-lens",
   "displayName": "Vael Lens",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Securely collect and organize browsing data to provide context for AI agents",
-  "author": "Vael AI",
+  "author": "Lens by Vael AI",
   "scripts": {
     "dev": "plasmo dev",
     "build": "pnpm exec prettier --write --log-level=silent . && plasmo build",
@@ -28,13 +28,14 @@
     "clsx": "2.1.1",
     "json-edit-react": "1.25.0",
     "lucide-react": "0.484.0",
-    "plasmo": "0.90.3",
+    "plasmo": "0.90.5",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "tailwind-merge": "3.0.2",
     "tailwindcss": "3.4.1",
     "tailwindcss-animate": "1.0.7",
-    "typescript": "5.7.2"
+    "typescript": "5.7.2",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "4.1.1",
@@ -42,6 +43,7 @@
     "@types/node": "20.11.5",
     "@types/react": "18.2.48",
     "@types/react-dom": "18.2.18",
+    "@types/uuid": "^10.0.0",
     "postcss": "8.4.33",
     "prettier": "3.2.4",
     "tsx": "4.19.3"
@@ -56,7 +58,8 @@
       "webNavigation"
     ],
     "host_permissions": [
-      "http://localhost:3000/"
+      "http://localhost:3000/",
+      "https://lens.vael.ai/"
     ],
     "background": {
       "service_worker": "background.ts"

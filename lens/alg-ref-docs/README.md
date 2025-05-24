@@ -1,6 +1,6 @@
 # Algorithm Reference Documentation
 
-This directory contains reference documentation for the future algorithm that will process data collected by the Vael AI Context Bank.
+This directory contains reference documentation for the future algorithm that will process data collected by the Lens by Vael AI Context Bank.
 
 ## Dynamic Documentation System
 

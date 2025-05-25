@@ -9,8 +9,19 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { ReportCharts } from "@/components/report-charts";
 import { SocialShare } from "@/components/social-share";
-import { AlertCircle, Brain, Clock, Mouse, RefreshCw, TrendingUp } from "lucide-react";
+import { CitationLink } from "@/components/citation-link";
+import { AlertCircle, Brain, Clock, Mouse, RefreshCw, TrendingUp, FileText } from "lucide-react";
 import Link from "next/link";
+
+// Citation data structure
+interface Citation {
+    sourceId: string;
+    domainOrFeature: string;
+    dataType: string;
+    confidence?: number;
+    timeRangeStart?: string;
+    timeRangeEnd?: string;
+}
 
 interface Report {
     userProfileSummary: {
@@ -18,6 +29,7 @@ interface Report {
         averageSessionDurationMinutes: number;
         averageTabsPerSession: number;
         commonTabGroups: string[][];
+        citations: Citation[];
     };
     topWebsites: Array<{
         domain: string;
@@ -25,11 +37,13 @@ interface Report {
         totalFocusTimeMinutes: number;
         inferredCategory: "shopping" | "travel" | "productivity" | "news" | "miscellaneous";
         confidence: number;
+        citation: Citation;
     }>;
     interactionPatterns: {
         mostCommonInteractionType: "click" | "scroll" | "hover" | "input" | "selection";
         averageScrollDepth?: number;
         averageInputFocusTimeMs?: number;
+        citations: Citation[];
     };
     ecommerceInsights?: {
         topCategories: string[];
@@ -38,10 +52,12 @@ interface Report {
             max: number;
             currency: string;
         };
+        citations: Citation[];
     };
     travelInsights?: {
         topDestinations: string[];
         preferredTransport?: string;
+        citations: Citation[];
     };
     inferredUserPersona:
         | "shopper"
@@ -50,12 +66,19 @@ interface Report {
         | "newsSeeker"
         | "passiveBrowser"
         | "powerMultitasker";
+    personaCitations: Citation[];
     chartData: {
-        focusTimeByDomain: Array<{ domain: string; focusTimeMinutes: number }>;
-        visitCountByCategory: Array<{ category: string; visitCount: number }>;
-        sessionActivityOverTime: Array<{ date: string; sessions: number; averageSessionDuration: number }>;
-        interactionTypeBreakdown: Array<{ type: string; count: number }>;
-        scrollDepthOverTime?: Array<{ timestamp: string; scrollDepth: number }>;
+        focusTimeByDomain: Array<{ domain: string; focusTimeMinutes: number; citation?: Citation }>;
+        visitCountByCategory: Array<{ category: string; visitCount: number; citation?: Citation }>;
+        sessionActivityOverTime: Array<{
+            date: string;
+            sessions: number;
+            averageSessionDuration: number;
+            citation?: Citation;
+        }>;
+        interactionTypeBreakdown: Array<{ type: string; count: number; citation?: Citation }>;
+        scrollDepthOverTime?: Array<{ timestamp: string; scrollDepth: number; citation?: Citation }>;
+        citations: Citation[];
     };
 }
 
@@ -563,8 +586,11 @@ export default function ReportPage() {
                     <CardContent className="p-4 sm:p-6">
                         <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-4 sm:gap-6">
                             <div className="text-center">
-                                <div className="mb-2 text-3xl sm:text-4xl">
+                                <div className="flex items-center justify-center mb-2 text-3xl sm:text-4xl">
                                     {getPersonaIcon(report.inferredUserPersona)}
+                                    {report.personaCitations?.[0] && (
+                                        <CitationLink citation={report.personaCitations[0]} className="ml-1" />
+                                    )}
                                 </div>
                                 <h3 className="text-sm font-semibold capitalize sm:text-lg">
                                     {report.inferredUserPersona.replace(/([A-Z])/g, " $1").trim()}
@@ -573,11 +599,19 @@ export default function ReportPage() {
                             </div>
 
                             <div className="text-center">
-                                <Badge
-                                    className={`${getActivityBadgeColor(report.userProfileSummary.dailyActivityLevel)} text-white mb-2 text-xs sm:text-sm`}
-                                >
-                                    {report.userProfileSummary.dailyActivityLevel.toUpperCase()}
-                                </Badge>
+                                <div className="flex items-center justify-center mb-2">
+                                    <Badge
+                                        className={`${getActivityBadgeColor(report.userProfileSummary.dailyActivityLevel)} text-white text-xs sm:text-sm`}
+                                    >
+                                        {report.userProfileSummary.dailyActivityLevel.toUpperCase()}
+                                    </Badge>
+                                    {report.userProfileSummary.citations?.[0] && (
+                                        <CitationLink
+                                            citation={report.userProfileSummary.citations[0]}
+                                            className="ml-1"
+                                        />
+                                    )}
+                                </div>
                                 <h3 className="text-sm font-semibold sm:text-base">Activity Level</h3>
                                 <p className="text-xs text-gray-600 sm:text-sm">Daily browsing intensity</p>
                             </div>
@@ -589,6 +623,12 @@ export default function ReportPage() {
                                         {Math.round(report.userProfileSummary.averageSessionDurationMinutes)}
                                     </span>
                                     <span className="text-xs text-gray-600 sm:text-sm">min</span>
+                                    {report.userProfileSummary.citations?.[1] && (
+                                        <CitationLink
+                                            citation={report.userProfileSummary.citations[1]}
+                                            className="ml-1"
+                                        />
+                                    )}
                                 </div>
                                 <h3 className="text-sm font-semibold sm:text-base">Average Session</h3>
                                 <p className="text-xs text-gray-600 sm:text-sm">Time spent browsing</p>
@@ -601,17 +641,77 @@ export default function ReportPage() {
                                         {Math.round(report.userProfileSummary.averageTabsPerSession)}
                                     </span>
                                     <span className="text-xs text-gray-600 sm:text-sm">tabs</span>
+                                    {report.userProfileSummary.citations?.[2] && (
+                                        <CitationLink
+                                            citation={report.userProfileSummary.citations[2]}
+                                            className="ml-1"
+                                        />
+                                    )}
                                 </div>
                                 <h3 className="text-sm font-semibold sm:text-base">Average Tabs</h3>
-                                <p className="text-xs text-gray-600 sm:text-sm">Per session</p>
+                                <p className="text-xs text-gray-600 sm:text-sm">Multitasking level</p>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
+                {/* Personalized Insights - Moved higher up in the report */}
+                {(report.ecommerceInsights || report.travelInsights) && (
+                    <Card className="mb-8">
+                        <CardHeader>
+                            <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+                                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
+                                <span>Personalized Insights</span>
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                                {report.ecommerceInsights && (
+                                    <div>
+                                        <h4 className="mb-3 font-medium">🛍️ Shopping Preferences</h4>
+                                        <div className="space-y-2">
+                                            <p className="text-sm">
+                                                <strong>Top Categories:</strong>{" "}
+                                                {report.ecommerceInsights.topCategories.join(", ")}
+                                            </p>
+                                            {report.ecommerceInsights.averageViewedPriceRange && (
+                                                <p className="text-sm">
+                                                    <strong>Price Range:</strong>{" "}
+                                                    {report.ecommerceInsights.averageViewedPriceRange.currency}
+                                                    {report.ecommerceInsights.averageViewedPriceRange.min} -
+                                                    {report.ecommerceInsights.averageViewedPriceRange.currency}
+                                                    {report.ecommerceInsights.averageViewedPriceRange.max}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {report.travelInsights && (
+                                    <div>
+                                        <h4 className="mb-3 font-medium">✈️ Travel Interests</h4>
+                                        <div className="space-y-2">
+                                            <p className="text-sm">
+                                                <strong>Destinations:</strong>{" "}
+                                                {report.travelInsights.topDestinations.join(", ")}
+                                            </p>
+                                            {report.travelInsights.preferredTransport && (
+                                                <p className="text-sm">
+                                                    <strong>Transport:</strong>{" "}
+                                                    {report.travelInsights.preferredTransport}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
                 {/* Top Websites */}
-                <Card className="mb-4 sm:mb-6 lg:mb-8">
-                    <CardHeader className="pb-3 sm:pb-6">
+                <Card className="mb-8">
+                    <CardHeader>
                         <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
                             <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
                             <span>Top Websites</span>
@@ -707,34 +807,24 @@ export default function ReportPage() {
                                     {comparisonInsights.keyChanges.map((change, index) => (
                                         <div
                                             key={index}
-                                            className={`p-4 rounded-lg border-l-4 transition-all hover:shadow-md ${
-                                                change.significance === "high"
-                                                    ? "bg-red-50 border-red-500 hover:bg-red-100"
-                                                    : change.significance === "medium"
-                                                      ? "bg-yellow-50 border-yellow-500 hover:bg-yellow-100"
-                                                      : "bg-gray-50 border-gray-500 hover:bg-gray-100"
-                                            }`}
+                                            className={`p-4 rounded-lg border-l-4 transition-all hover:shadow-md ${change.change.includes("increase") ? "border-green-500 bg-green-50" : "border-red-500 bg-red-50"}`}
                                         >
-                                            <div className="flex items-center justify-between mb-2">
-                                                <h5 className="text-xs font-medium text-gray-800 sm:text-sm">
-                                                    {change.metric}
-                                                </h5>
-                                                <Badge
-                                                    variant="secondary"
-                                                    className={`text-xs ${
-                                                        change.significance === "high"
-                                                            ? "bg-red-100 text-red-700"
-                                                            : change.significance === "medium"
-                                                              ? "bg-yellow-100 text-yellow-700"
-                                                              : "bg-gray-100 text-gray-700"
-                                                    }`}
-                                                >
-                                                    {change.significance}
-                                                </Badge>
+                                            <div className="flex items-start space-x-3">
+                                                <div>
+                                                    <div className="flex items-center justify-between">
+                                                        <h5 className="font-medium">{change.metric}</h5>
+                                                        <Badge
+                                                            variant="outline"
+                                                            className={`ml-2 text-xs ${change.significance === "high" ? "text-red-500 border-red-500" : change.significance === "medium" ? "text-orange-500 border-orange-500" : "text-gray-500 border-gray-500"}`}
+                                                        >
+                                                            {change.significance.toUpperCase()}
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="space-y-1 text-xs text-gray-600 sm:text-sm">
+                                                        <p>{change.change}</p>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <p className="text-xs leading-relaxed text-gray-600 sm:text-sm">
-                                                {change.change}
-                                            </p>
                                         </div>
                                     ))}
                                 </div>
@@ -823,7 +913,12 @@ export default function ReportPage() {
                 {/* Interaction Patterns */}
                 <Card className="mb-8">
                     <CardHeader>
-                        <CardTitle>Interaction Patterns</CardTitle>
+                        <CardTitle className="flex items-center">
+                            <span>Interaction Patterns</span>
+                            {report.interactionPatterns.citations?.[0] && (
+                                <CitationLink citation={report.interactionPatterns.citations[0]} className="ml-2" />
+                            )}
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -865,7 +960,15 @@ export default function ReportPage() {
                             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                                 {report.ecommerceInsights && (
                                     <div>
-                                        <h4 className="mb-3 font-medium">🛍️ Shopping Preferences</h4>
+                                        <div className="flex items-center mb-3">
+                                            <h4 className="font-medium">🛍️ Shopping Preferences</h4>
+                                            {report.ecommerceInsights.citations?.[0] && (
+                                                <CitationLink
+                                                    citation={report.ecommerceInsights.citations[0]}
+                                                    className="ml-1"
+                                                />
+                                            )}
+                                        </div>
                                         <div className="space-y-2">
                                             <p className="text-sm">
                                                 <strong>Top Categories:</strong>{" "}
@@ -886,7 +989,15 @@ export default function ReportPage() {
 
                                 {report.travelInsights && (
                                     <div>
-                                        <h4 className="mb-3 font-medium">✈️ Travel Interests</h4>
+                                        <div className="flex items-center mb-3">
+                                            <h4 className="font-medium">✈️ Travel Interests</h4>
+                                            {report.travelInsights.citations?.[0] && (
+                                                <CitationLink
+                                                    citation={report.travelInsights.citations[0]}
+                                                    className="ml-1"
+                                                />
+                                            )}
+                                        </div>
                                         <div className="space-y-2">
                                             <p className="text-sm">
                                                 <strong>Destinations:</strong>{" "}

@@ -22,8 +22,8 @@ export default function HomePage() {
                 style={{
                     background: `
                         radial-gradient(circle at 30% 20%, #8F8CF3 0%, transparent 50%),
-                        radial-gradient(circle at 80% 80%, #4F8DFD 0%, transparent 50%),
-                        radial-gradient(circle at 40% 40%, #6366f1 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, #4F8DFD 5%, transparent 50%),
+                        radial-gradient(circle at 40% 40%, #6366f1 5%, transparent 50%),
                         linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)
                     `,
                 }}

@@ -37,13 +37,48 @@ function calculateDataSimilarity(data1: any, data2: any): number {
 }
 
 // Report schema (reuse existing schema)
+// Citation schema for data source references
+const citationSchema = z.object({
+    sourceId: z.string(), // Unique ID for the data source
+    domainOrFeature: z.string(), // Domain or feature this data comes from
+    dataType: z.string(), // Type of data (e.g., interaction, metadata, pattern)
+    confidence: z.number().optional(), // Confidence score (0-1)
+    timeRangeStart: z.string().optional(), // ISO date string for data time range start
+    timeRangeEnd: z.string().optional(), // ISO date string for data time range end
+});
+
 const reportSchema = z.object({
     userProfileSummary: z.object({
         dailyActivityLevel: z.enum(["low", "moderate", "high"]),
         averageSessionDurationMinutes: z.number(),
         averageTabsPerSession: z.number(),
         commonTabGroups: z.array(z.array(z.string())),
+        // Citations for user profile data
+        citations: z.array(citationSchema),
     }),
+    // Personal insights moved up for better visibility
+    ecommerceInsights: z
+        .object({
+            topCategories: z.array(z.string()),
+            averageViewedPriceRange: z
+                .object({
+                    min: z.number(),
+                    max: z.number(),
+                    currency: z.string(),
+                })
+                .optional(),
+            // Citations for ecommerce insights data
+            citations: z.array(citationSchema),
+        })
+        .optional(),
+    travelInsights: z
+        .object({
+            topDestinations: z.array(z.string()),
+            preferredTransport: z.string().optional(),
+            // Citations for travel insights data
+            citations: z.array(citationSchema),
+        })
+        .optional(),
     topWebsites: z.array(
         z.object({
             domain: z.string(),
@@ -62,6 +97,8 @@ const reportSchema = z.object({
                 "health",
             ]),
             confidence: z.number(),
+            // Citation for each website data
+            citation: citationSchema,
         })
     ),
     interactionPatterns: z.object({
@@ -77,25 +114,9 @@ const reportSchema = z.object({
         ]),
         averageScrollDepth: z.number().optional(),
         averageInputFocusTimeMs: z.number().optional(),
+        // Citations for interaction patterns
+        citations: z.array(citationSchema),
     }),
-    ecommerceInsights: z
-        .object({
-            topCategories: z.array(z.string()),
-            averageViewedPriceRange: z
-                .object({
-                    min: z.number(),
-                    max: z.number(),
-                    currency: z.string(),
-                })
-                .optional(),
-        })
-        .optional(),
-    travelInsights: z
-        .object({
-            topDestinations: z.array(z.string()),
-            preferredTransport: z.string().optional(),
-        })
-        .optional(),
     inferredUserPersona: z.enum([
         "shopper",
         "productiveProfessional",
@@ -104,12 +125,21 @@ const reportSchema = z.object({
         "passiveBrowser",
         "powerMultitasker",
     ]),
+    // Citation for user persona inference
+    personaCitations: z.array(citationSchema),
     chartData: z.object({
-        focusTimeByDomain: z.array(z.object({ domain: z.string(), focusTimeMinutes: z.number() })),
+        focusTimeByDomain: z.array(
+            z.object({
+                domain: z.string(),
+                focusTimeMinutes: z.number(),
+                citation: citationSchema.optional(),
+            })
+        ),
         visitCountByCategory: z.array(
             z.object({
                 category: z.string(), // Allow flexible category names from AI
                 visitCount: z.number(),
+                citation: citationSchema.optional(),
             })
         ),
         sessionActivityOverTime: z.array(
@@ -117,15 +147,27 @@ const reportSchema = z.object({
                 date: z.string(),
                 sessions: z.number(),
                 averageSessionDuration: z.number(),
+                citation: citationSchema.optional(),
             })
         ),
         interactionTypeBreakdown: z.array(
             z.object({
                 type: z.string(), // Allow flexible interaction type names from AI
                 count: z.number(),
+                citation: citationSchema.optional(),
             })
         ),
-        scrollDepthOverTime: z.array(z.object({ timestamp: z.string(), scrollDepth: z.number() })).optional(),
+        scrollDepthOverTime: z
+            .array(
+                z.object({
+                    timestamp: z.string(),
+                    scrollDepth: z.number(),
+                    citation: citationSchema.optional(),
+                })
+            )
+            .optional(),
+        // Global chart data citations
+        citations: z.array(citationSchema),
     }),
 });
 
@@ -278,6 +320,14 @@ async function processReportInBackground(reportId: string, email: string, userDa
 
         // Initialize Gemini model
         const model = google("gemini-2.5-flash-preview-05-20");
+
+        // Configure generateObject options for optimal AI performance
+        const aiOptions = {
+            temperature: 0.2, // Low temperature for more deterministic outputs
+            maxOutputTokens: 4096, // Control output size
+            topP: 0.95, // Slightly more focused sampling
+            topK: 40, // Filter to more likely tokens
+        };
 
         // Stage 2: Start data processing (20%)
         await updateProgress(20, "Processing browsing data");
@@ -559,6 +609,7 @@ async function processReportInBackground(reportId: string, email: string, userDa
         const { object: report } = await generateObject({
             model,
             schema: reportSchema,
+            ...aiOptions, // Apply our optimized AI settings
             prompt: `You are an expert digital behavior analyst creating comprehensive browsing behavior reports. Analyze the provided data to generate detailed insights and actionable recommendations.
 
 DATA PROFILE:
@@ -578,9 +629,27 @@ ANALYSIS FRAMEWORK:
 CRITICAL REQUIREMENTS FOR CHART DATA:
 - visitCountByCategory: MUST use descriptive category names like "Shopping", "Productivity", "News & Media", "Travel", "Entertainment", "Social Media", "Education", "Gaming" (NEVER use numbers like 0, 1, 2, 3, 4)
 - interactionTypeBreakdown: MUST use clear interaction names like "Click", "Scroll", "Hover", "Input", "Selection", "Navigation" (NEVER use numbers)
-- sessionActivityOverTime: Use readable dates in YYYY-MM-DD format
+- sessionActivityOverTime: CURRENT DATE IS ${new Date().toISOString()}. Use readable dates in YYYY-MM-DD format with the CORRECT CURRENT YEAR ${new Date().getFullYear()} and CURRENT MONTH ${new Date().getMonth() + 1}. Do not fabricate future dates.
 - focusTimeByDomain: Use actual domain names from the data and the provided totalFocusTimeMinutes (already converted from milliseconds)
 - ALL chart labels MUST be human-readable descriptive text, NEVER numeric indices or abbreviations
+
+CITATION REQUIREMENTS - CRITICAL - MUST INCLUDE FOR ACCOUNTABILITY:
+- For EVERY data point and insight, you MUST provide a citation in the appropriate format with these requirements:
+  * sourceId: Create a unique ID in the format "data-{domain or category}-{number}" (e.g., "data-amazon-1")
+  * domainOrFeature: Specify the exact domain, feature, or data category this insight comes from
+  * dataType: Specify the type of data (e.g., "interaction", "metadata", "browsing pattern")
+  * confidence: Include a confidence score from 0.1 to 1.0 based on how strongly the data supports the conclusion
+  * timeRangeStart and timeRangeEnd: Use today's date ${new Date().toISOString().split("T")[0]} for time ranges if specific dates aren't available
+
+- Citations MUST be included for:
+  * ALL userProfileSummary data points
+  * ALL ecommerceInsights and travelInsights
+  * Each individual topWebsite entry
+  * ALL interactionPatterns data
+  * Each persona determination
+  * ALL chart data points
+
+This report will be used with a data citation feature using Chrome Extension ID: ieffbdfmjepmohbgeagcpojgdjjheine that allows users to see exactly what data supports each insight. Users will be able to click on citations to view the raw data that supports the insights, so accuracy is critical.
 
 DATA UNIT CONVERSION NOTES:
 - totalFocusTimeMinutes fields are already converted from milliseconds to minutes with 2 decimal precision
@@ -1117,6 +1186,144 @@ export async function POST(request: NextRequest) {
                     userData,
                 }),
             });
+
+            if (!internalResponse.ok) {
+                const errorText = await internalResponse.text();
+                console.error(`Internal API failed with status ${internalResponse.status}: ${errorText}`);
+
+                // Update report status to failed
+                await reportsCollection.updateOne(
+                    { reportId },
+                    {
+                        $set: {
+                            status: "failed",
+                            error: `Internal processing failed (${internalResponse.status}). Please try again.`,
+                            errorType: "internal_api_failed",
+                            failedAt: new Date(),
+                            lastUpdated: new Date(),
+                        },
+                    }
+                );
+
+                throw new Error(`Internal API failed: ${internalResponse.status} - ${errorText}`);
+            }
+
+            console.log(`Internal API call successful for report ${reportId}`);
+        } catch (fetchError) {
+            console.error("Failed to call internal API:", fetchError);
+
+            // Update report status to failed if not already updated
+            try {
+                const currentReport = await reportsCollection.findOne({ reportId });
+                if (currentReport && currentReport.status === "processing") {
+                    await reportsCollection.updateOne(
+                        { reportId },
+                        {
+                            $set: {
+                                status: "failed",
+                                error: "Failed to start report processing. Please try again.",
+                                errorType: "internal_api_connection_failed",
+                                failedAt: new Date(),
+                                lastUpdated: new Date(),
+                            },
+                        }
+                    );
+                }
+            } catch (updateError) {
+                console.error("Failed to update report status after internal API error:", updateError);
+            }
+
+            throw fetchError; // Re-throw to be caught by outer try-catch
+        }
+
+        // 5. Return immediate success response
+        return NextResponse.json({
+            success: true,
+            reportId,
+            message: "Data received successfully. Processing started.",
+            redirectUrl: `/reports/${reportId}`,
+            estimatedProcessingTimeSeconds: 45,
+        });
+    } catch (error) {
+        console.error("Error in submit-data endpoint:", error);
+
+        if (error instanceof z.ZodError) {
+            return NextResponse.json({ error: "Invalid request data", details: error.errors }, { status: 400 });
+        }
+
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
+}
+
+
+            if (!internalResponse.ok) {
+                const errorText = await internalResponse.text();
+                console.error(`Internal API failed with status ${internalResponse.status}: ${errorText}`);
+
+                // Update report status to failed
+                await reportsCollection.updateOne(
+                    { reportId },
+                    {
+                        $set: {
+                            status: "failed",
+                            error: `Internal processing failed (${internalResponse.status}). Please try again.`,
+                            errorType: "internal_api_failed",
+                            failedAt: new Date(),
+                            lastUpdated: new Date(),
+                        },
+                    }
+                );
+
+                throw new Error(`Internal API failed: ${internalResponse.status} - ${errorText}`);
+            }
+
+            console.log(`Internal API call successful for report ${reportId}`);
+        } catch (fetchError) {
+            console.error("Failed to call internal API:", fetchError);
+
+            // Update report status to failed if not already updated
+            try {
+                const currentReport = await reportsCollection.findOne({ reportId });
+                if (currentReport && currentReport.status === "processing") {
+                    await reportsCollection.updateOne(
+                        { reportId },
+                        {
+                            $set: {
+                                status: "failed",
+                                error: "Failed to start report processing. Please try again.",
+                                errorType: "internal_api_connection_failed",
+                                failedAt: new Date(),
+                                lastUpdated: new Date(),
+                            },
+                        }
+                    );
+                }
+            } catch (updateError) {
+                console.error("Failed to update report status after internal API error:", updateError);
+            }
+
+            throw fetchError; // Re-throw to be caught by outer try-catch
+        }
+
+        // 5. Return immediate success response
+        return NextResponse.json({
+            success: true,
+            reportId,
+            message: "Data received successfully. Processing started.",
+            redirectUrl: `/reports/${reportId}`,
+            estimatedProcessingTimeSeconds: 45,
+        });
+    } catch (error) {
+        console.error("Error in submit-data endpoint:", error);
+
+        if (error instanceof z.ZodError) {
+            return NextResponse.json({ error: "Invalid request data", details: error.errors }, { status: 400 });
+        }
+
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
+}
+
 
             if (!internalResponse.ok) {
                 const errorText = await internalResponse.text();

@@ -90,6 +90,28 @@ const CATEGORY_COLORS: Record<string, string> = {
     "Health & Fitness": "#84CC16",
 };
 
+// Interaction type name mapping for better display
+const INTERACTION_NAMES: Record<string, string> = {
+    click: "Click",
+    scroll: "Scroll",
+    hover: "Hover",
+    input: "Input",
+    selection: "Selection",
+    navigation: "Navigation",
+    focus: "Focus",
+    typing: "Typing",
+    keypress: "Keypress",
+    // Fallback for any numbers or unknown interaction types
+    "0": "Click",
+    "1": "Scroll",
+    "2": "Hover",
+    "3": "Input",
+    "4": "Selection",
+    "5": "Navigation",
+    "6": "Focus",
+    "7": "Typing",
+};
+
 export function ReportCharts({ data }: ReportChartsProps) {
     // Responsive domain formatting based on screen size
     const formatDomain = (domain: string) => {
@@ -190,7 +212,9 @@ export function ReportCharts({ data }: ReportChartsProps) {
                                 <Pie
                                     data={data.visitCountByCategory.map((item) => ({
                                         ...item,
+                                        name: formatCategory(item.category), // Add name field for labels and legend
                                         category: formatCategory(item.category),
+                                        value: item.visitCount, // Ensure value is set for dataKey
                                     }))}
                                     cx="50%"
                                     cy="50%"
@@ -202,17 +226,22 @@ export function ReportCharts({ data }: ReportChartsProps) {
                                     }
                                     outerRadius={isMobile ? 60 : 100}
                                     fill="#8884d8"
-                                    dataKey="visitCount"
+                                    nameKey="name" // Use nameKey to specify which field to use for names
+                                    dataKey="value" // Use value instead of visitCount
                                 >
-                                    {data.visitCountByCategory.map((entry, index) => (
-                                        <Cell
-                                            key={`cell-${index}`}
-                                            fill={CATEGORY_COLORS[entry.category] || COLORS[index % COLORS.length]}
-                                        />
-                                    ))}
+                                    {data.visitCountByCategory.map((entry, index) => {
+                                        const categoryName = formatCategory(entry.category);
+                                        return (
+                                            <Cell
+                                                key={`cell-${index}`}
+                                                fill={CATEGORY_COLORS[categoryName] || COLORS[index % COLORS.length]}
+                                            />
+                                        );
+                                    })}
                                 </Pie>
                                 <Tooltip content={<CustomTooltip />} />
                                 <Legend
+                                    formatter={(value) => value} // Ensure legend shows the name value
                                     wrapperStyle={{
                                         fontSize: isMobile ? "12px" : "14px",
                                         paddingTop: "10px",
@@ -245,10 +274,22 @@ export function ReportCharts({ data }: ReportChartsProps) {
                                 <XAxis
                                     dataKey="date"
                                     tickFormatter={(value) => {
+                                        // Parse the date string to ensure proper formatting
                                         const date = new Date(value);
+
+                                        // Check if date is valid
+                                        if (isNaN(date.getTime())) {
+                                            return "Invalid date";
+                                        }
+
+                                        // Use more detailed formatting
                                         return isMobile
                                             ? date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                                            : date.toLocaleDateString();
+                                            : date.toLocaleDateString("en-US", {
+                                                  year: "numeric",
+                                                  month: "long",
+                                                  day: "numeric",
+                                              });
                                     }}
                                     fontSize={isMobile ? 10 : 12}
                                 />
@@ -256,7 +297,18 @@ export function ReportCharts({ data }: ReportChartsProps) {
                                 {!isMobile && <YAxis yAxisId="right" orientation="right" fontSize={12} />}
                                 <Tooltip
                                     content={<CustomTooltip />}
-                                    labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                                    labelFormatter={(value) => {
+                                        const date = new Date(value);
+                                        if (isNaN(date.getTime())) return "Invalid date";
+
+                                        // Show more detailed date in tooltip including weekday
+                                        return date.toLocaleDateString("en-US", {
+                                            weekday: "long",
+                                            year: "numeric",
+                                            month: "long",
+                                            day: "numeric",
+                                        });
+                                    }}
                                 />
                                 <Legend
                                     wrapperStyle={{
@@ -296,7 +348,16 @@ export function ReportCharts({ data }: ReportChartsProps) {
                     <CardContent className="p-2 sm:p-6">
                         <ResponsiveContainer width="100%" height={getChartHeight(280)}>
                             <BarChart
-                                data={data.interactionTypeBreakdown}
+                                data={data.interactionTypeBreakdown.map((item) => ({
+                                    ...item,
+                                    // Map interaction type to human-readable format
+                                    label:
+                                        typeof item.type === "string" && item.type.match(/^\d+$/)
+                                            ? INTERACTION_NAMES[item.type] || `Type ${item.type}`
+                                            : typeof item.type === "string"
+                                              ? item.type.charAt(0).toUpperCase() + item.type.slice(1)
+                                              : `Type ${item.type}`,
+                                }))}
                                 layout="horizontal"
                                 margin={{
                                     top: 20,
@@ -308,13 +369,16 @@ export function ReportCharts({ data }: ReportChartsProps) {
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis type="number" fontSize={isMobile ? 10 : 12} />
                                 <YAxis
-                                    dataKey="type"
+                                    dataKey="label"
                                     type="category"
-                                    width={isMobile ? 60 : 100}
+                                    width={isMobile ? 70 : 110}
                                     fontSize={isMobile ? 9 : 12}
                                 />
-                                <Tooltip content={<CustomTooltip />} />
-                                <Bar dataKey="count" fill="#8B5CF6" />
+                                <Tooltip
+                                    content={<CustomTooltip />}
+                                    formatter={(value, name) => [value, "Interactions"]}
+                                />
+                                <Bar dataKey="count" fill="#8B5CF6" name="Interactions" />
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>

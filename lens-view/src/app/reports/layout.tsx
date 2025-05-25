@@ -13,5 +13,5 @@ export const metadata: Metadata = {
 };
 
 export default function ReportsLayout({ children }: { children: React.ReactNode }) {
-    return children;
+    return <div className="h-screen w-full overflow-auto">{children}</div>;
 }

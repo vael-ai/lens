@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     BarChart,
@@ -142,7 +143,7 @@ export function ReportCharts({ data }: ReportChartsProps) {
     const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
 
     // Custom tooltip for charts
-    const CustomTooltip = ({ active, payload, label }: any) => {
+    const CustomTooltip = ({ active, payload, label }: any): React.ReactElement | null => {
         if (active && payload?.length) {
             return (
                 <div className="p-3 bg-white border border-gray-200 rounded-lg shadow-lg">
@@ -241,7 +242,7 @@ export function ReportCharts({ data }: ReportChartsProps) {
                                 </Pie>
                                 <Tooltip content={<CustomTooltip />} />
                                 <Legend
-                                    formatter={(value) => value} // Ensure legend shows the name value
+                                    formatter={(value) => String(value)} // Ensure legend shows the name value
                                     wrapperStyle={{
                                         fontSize: isMobile ? "12px" : "14px",
                                         paddingTop: "10px",
@@ -352,11 +353,11 @@ export function ReportCharts({ data }: ReportChartsProps) {
                                     ...item,
                                     // Map interaction type to human-readable format
                                     label:
-                                        typeof item.type === "string" && item.type.match(/^\d+$/)
+                                        typeof item.type === "string" && /^\d+$/.exec(item.type)
                                             ? INTERACTION_NAMES[item.type] || `Type ${item.type}`
                                             : typeof item.type === "string"
                                               ? item.type.charAt(0).toUpperCase() + item.type.slice(1)
-                                              : `Type ${item.type}`,
+                                              : `Type ${String(item.type)}`,
                                 }))}
                                 layout="horizontal"
                                 margin={{

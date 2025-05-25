@@ -4,7 +4,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "next build --turbopack",
+        "build": "pnpx prettier --write --log-level=silent . && next build --turbopack",
         "dev": "next dev --turbopack",
         "start": "next start",
         "lint": "next lint"

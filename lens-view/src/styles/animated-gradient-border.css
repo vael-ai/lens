@@ -1,35 +1,37 @@
 /* Animated Gradient Border for Lens by Vael AI */
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .animated-gradient-border {
-  position: absolute;
-  inset: -4px;
-  z-index: 0;
-  border-radius: 1rem;
-  pointer-events: none;
-  background: conic-gradient(
-    from 90deg at 50% 50%,
-    #a855f7 0deg,
-    #3b82f6 90deg,
-    #a855f7 180deg,
-    #3b82f6 270deg,
-    #a855f7 360deg
-  );
-  filter: blur(16px);
-  opacity: 0.5;
-  animation: spin 6s linear infinite;
+    position: absolute;
+    inset: -4px;
+    z-index: 0;
+    border-radius: 1rem;
+    pointer-events: none;
+    background: conic-gradient(
+        from 90deg at 50% 50%,
+        #a855f7 0deg,
+        #3b82f6 90deg,
+        #a855f7 180deg,
+        #3b82f6 270deg,
+        #a855f7 360deg
+    );
+    filter: blur(16px);
+    opacity: 0.5;
+    animation: spin 6s linear infinite;
 }
 
 .animated-gradient-container {
-  position: relative;
-  z-index: 1;
+    position: relative;
+    z-index: 1;
 }
 
 .animated-gradient-content {
-  position: relative;
-  z-index: 2;
-  /* Add any additional styling for the content here */
+    position: relative;
+    z-index: 2;
+    /* Add any additional styling for the content here */
 }

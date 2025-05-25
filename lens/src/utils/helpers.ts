@@ -25,42 +25,6 @@ export const generateUUID = (): string => {
 }
 
 /**
- * Safely parses a JSON string without throwing exceptions
- * @param jsonString String to parse as JSON
- * @param fallback Optional fallback value if parsing fails
- * @returns Parsed object or fallback value
- * @example
- * const jsonString = '{"name": "John Doe"}'
- * const parsedJson = safeJSONParse(jsonString)
- * console.log(parsedJson) // Output: { name: 'John Doe' }
- */
-export const safeJSONParse = <T>(
-  jsonString: string,
-  fallback: T = null as T
-): T => {
-  try {
-    return JSON.parse(jsonString) as T
-  } catch (e) {
-    return fallback
-  }
-}
-
-/**
- * Truncates text to a maximum length with an ellipsis
- * @param text Text to truncate
- * @param maxLength Maximum length before truncation
- * @returns Truncated text with ellipsis if needed
- * @example
- * const text = 'This is a very long text that needs to be truncated'
- * const truncatedText = truncateText(text, 20)
- * console.log(truncatedText) // Output: This is a very long...
- */
-export const truncateText = (text: string, maxLength: number): string => {
-  if (!text || text.length <= maxLength) return text
-  return text.substring(0, maxLength) + "..."
-}
-
-/**
  * Validates if a string is a valid URL
  * @param url - The string to check if it's a valid URL
  * @returns True if the string is a valid URL, false otherwise

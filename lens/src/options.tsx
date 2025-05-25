@@ -27,6 +27,7 @@ import {
   addToBlacklist,
   addToWhitelist,
   getUserConfig,
+  hasValidUserEmail,
   removeFromBlacklist,
   removeFromWhitelist,
   resetConfig,
@@ -56,6 +57,7 @@ function OptionsPage() {
   const [exportSuccess, setExportSuccess] = useState(false)
   const [searchText, setSearchText] = useState("")
   const [carouselIndex, setCarouselIndex] = useState(0)
+  const [hasEmail, setHasEmail] = useState(false)
 
   // Define the boolean config keys to display in settings with color coding (matching popup.tsx)
   const BOOLEAN_USER_CONFIG_KEYS = [
@@ -76,6 +78,10 @@ function OptionsPage() {
     try {
       const userConfig = await getUserConfig()
       setConfig(userConfig)
+
+      // Check if user has a valid email
+      const emailValid = await hasValidUserEmail()
+      setHasEmail(emailValid)
     } catch (error) {
       console.error("Error loading config:", error)
       setMessage({ text: "Failed to load configuration", type: "error" })
@@ -446,6 +452,90 @@ function OptionsPage() {
           </div>
         </div>
 
+        {/* Master Toggle Section */}
+        <div className="mb-6 overflow-hidden transition-all duration-300 bg-white border rounded-lg shadow-md dark:bg-slate-800/60 hover:shadow-lg border-purple-100/50 dark:border-purple-900/30">
+          <div className="flex items-center p-4 border-b bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-purple-100/50 dark:border-purple-900/30">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-5 h-5 mr-3 text-purple-500 dark:text-purple-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 10V3L4 14h7v7l9-11h-7z"
+              />
+            </svg>
+            <div>
+              <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
+                Master Data Collection
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Global control for all data collection activities
+              </p>
+            </div>
+          </div>
+          <div className="p-6">
+            {!hasEmail ? (
+              <div className="p-4 mb-4 border border-amber-200 rounded-lg bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800/30">
+                <div className="flex items-center">
+                  <svg
+                    className="w-5 h-5 mr-2 text-amber-600 dark:text-amber-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                    />
+                  </svg>
+                  <div>
+                    <p className="font-medium text-amber-800 dark:text-amber-200">
+                      Email Required for Data Collection
+                    </p>
+                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                      Please provide your email address in the popup to enable
+                      data collection.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div
+              className={`flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700/50 rounded-lg transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-700/30 ${!hasEmail ? "opacity-50" : ""}`}>
+              <div className="flex items-center">
+                <div className="w-2 h-8 bg-purple-300 dark:bg-purple-800/50 rounded-full mr-4 opacity-70"></div>
+                <div>
+                  <label
+                    htmlFor="masterCollection"
+                    className="text-base font-medium cursor-pointer text-slate-700 dark:text-slate-300">
+                    Master Data Collection
+                  </label>
+                  <div className="text-sm text-purple-500 dark:text-purple-400 font-medium">
+                    {!hasEmail
+                      ? "Email required"
+                      : config?.masterCollectionEnabled
+                        ? "Active"
+                        : "Inactive"}
+                  </div>
+                </div>
+              </div>
+              <Switch
+                id="masterCollection"
+                checked={config?.masterCollectionEnabled ?? false}
+                onCheckedChange={toggleMasterCollection}
+                disabled={!hasEmail}
+                className="data-[state=checked]:bg-purple-600 dark:data-[state=checked]:bg-purple-500 data-[state=unchecked]:bg-slate-300 dark:data-[state=unchecked]:bg-slate-600 transition-colors duration-200 scale-110"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Notification message */}
         {message && (
           <div
@@ -589,7 +679,7 @@ function OptionsPage() {
                     return (
                       <div
                         key={setting.key}
-                        className={`flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700/50 rounded-lg transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-700/30 ${!config.masterCollectionEnabled ? "opacity-50" : ""}`}>
+                        className={`flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700/50 rounded-lg transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-700/30 ${!hasEmail || !config.masterCollectionEnabled ? "opacity-50" : ""}`}>
                         <div className="flex items-center">
                           <div
                             className={`w-2 h-8 ${colorClasses.indicator[setting.color]} rounded-full mr-4 opacity-70`}></div>
@@ -601,11 +691,13 @@ function OptionsPage() {
                             </label>
                             <div
                               className={`text-sm ${colorClasses.text[setting.color]} font-medium`}>
-                              {config.masterCollectionEnabled
-                                ? config[setting.key as keyof UserConfig]
-                                  ? "Active"
-                                  : "Inactive"
-                                : "Paused by master toggle"}
+                              {!hasEmail
+                                ? "Email required"
+                                : !config.masterCollectionEnabled
+                                  ? "Paused by master toggle"
+                                  : config[setting.key as keyof UserConfig]
+                                    ? "Active"
+                                    : "Inactive"}
                             </div>
                           </div>
                         </div>
@@ -618,7 +710,9 @@ function OptionsPage() {
                           onCheckedChange={() =>
                             toggleSetting(setting.key as keyof UserConfig)
                           }
-                          disabled={!config.masterCollectionEnabled}
+                          disabled={
+                            !hasEmail || !config.masterCollectionEnabled
+                          }
                           className={`${colorClasses.switch[setting.color]} data-[state=unchecked]:bg-slate-300 dark:data-[state=unchecked]:bg-slate-600 transition-colors duration-200 scale-110`}
                         />
                       </div>

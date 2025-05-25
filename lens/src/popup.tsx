@@ -34,6 +34,7 @@ import { createAnalyticsEvent } from "./utils/dataCollection"
 import {
   addToBlacklist,
   getUserConfig,
+  hasValidUserEmail,
   removeFromBlacklist,
   updateUserConfig
 } from "./utils/userPreferences"
@@ -85,6 +86,7 @@ function IndexPopup(): JSX.Element {
   const [canGenerateNewReport, setCanGenerateNewReport] =
     useState<boolean>(true)
   const [isDataLoaded, setIsDataLoaded] = useState(false)
+  const [hasEmail, setHasEmail] = useState(false)
 
   // Define the boolean config keys to display in settings with color coding
   const BOOLEAN_USER_CONFIG_KEYS = [
@@ -186,6 +188,10 @@ function IndexPopup(): JSX.Element {
         } else {
           setShowOnboarding(false) // Ensure it's false if onboarding is complete
         }
+
+        // Check if user has a valid email
+        const emailValid = await hasValidUserEmail()
+        setHasEmail(emailValid)
       } catch (error) {
         console.error("Error loading config:", error)
       } finally {
@@ -461,14 +467,25 @@ function IndexPopup(): JSX.Element {
     // CRITICAL: Update UI state first, synchronously, before any async operations
     setUserEmail(emailToSave)
     setShowOnboarding(false)
+    setHasEmail(true) // Set email status to true immediately
 
     // Now handle storage and API operations separately, after UI has updated
     setTimeout(() => {
-      // Save to local storage
+      // Save to local storage and enable master collection
       try {
         const storage = new Storage()
         storage.set(USER_EMAIL_KEY, emailToSave)
         storage.set(ONBOARDING_COMPLETE_KEY, true)
+
+        // Enable master collection now that email is provided
+        updateUserConfig({ masterCollectionEnabled: true })
+          .then((updatedConfig) => {
+            setConfig(updatedConfig)
+            console.log("Master collection enabled after email save")
+          })
+          .catch((configError) => {
+            console.error("Error enabling master collection:", configError)
+          })
 
         // Also store in cookie for dev mode
         if (USE_LOCAL_API) {
@@ -748,6 +765,7 @@ function IndexPopup(): JSX.Element {
         <MasterToggle
           enabled={config?.masterCollectionEnabled ?? false}
           onToggle={toggleMasterCollection}
+          hasEmail={hasEmail}
         />
         <Tabs
           value={activeTab}
@@ -922,7 +940,7 @@ function IndexPopup(): JSX.Element {
                     return (
                       <div
                         key={setting.key}
-                        className={`flex items-center justify-between py-2.5 px-1.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-700/30 rounded-sm ${!config.masterCollectionEnabled ? "opacity-50" : ""}`}>
+                        className={`flex items-center justify-between py-2.5 px-1.5 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0 transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-700/30 rounded-sm ${!hasEmail || !config.masterCollectionEnabled ? "opacity-50" : ""}`}>
                         <div className="flex items-center">
                           <div
                             className={`w-1 h-6 ${colorClasses.indicator[setting.color]} rounded-full mr-2 opacity-70`}></div>
@@ -934,11 +952,13 @@ function IndexPopup(): JSX.Element {
                             </label>
                             <div
                               className={`text-[9px] ${colorClasses.text[setting.color]} font-medium`}>
-                              {config.masterCollectionEnabled
-                                ? config[setting.key as keyof UserConfig]
-                                  ? "Active"
-                                  : "Inactive"
-                                : "Paused by master toggle"}
+                              {!hasEmail
+                                ? "Email required"
+                                : !config.masterCollectionEnabled
+                                  ? "Paused by master toggle"
+                                  : config[setting.key as keyof UserConfig]
+                                    ? "Active"
+                                    : "Inactive"}
                             </div>
                           </div>
                         </div>
@@ -951,7 +971,9 @@ function IndexPopup(): JSX.Element {
                           onCheckedChange={() =>
                             toggleSetting(setting.key as keyof UserConfig)
                           }
-                          disabled={!config.masterCollectionEnabled}
+                          disabled={
+                            !hasEmail || !config.masterCollectionEnabled
+                          }
                           className={`${colorClasses.switch[setting.color]} data-[state=unchecked]:bg-slate-300 dark:data-[state=unchecked]:bg-slate-600 transition-colors duration-200`}
                         />
                       </div>

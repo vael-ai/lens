@@ -1,5 +1,7 @@
 import { Storage } from "@plasmohq/storage"
 
+import { USER_EMAIL_KEY } from "./constants"
+
 // Initialize storage with error handling
 let storage: Storage
 try {
@@ -15,7 +17,7 @@ try {
 
 // Default configuration if none exists
 const DEFAULT_CONFIG: UserConfig = {
-  masterCollectionEnabled: true, // Default to data collection being enabled (changed as requested)
+  masterCollectionEnabled: false, // Default to data collection being disabled until email is provided
   collectPageMetadata: true,
   collectInteractions: true,
   collectDeviceInfo: true,
@@ -364,20 +366,50 @@ export const resetConfig = async (): Promise<UserConfig> => {
 }
 
 /**
+ * Checks if the user has provided a valid email address
+ * @returns A promise resolving to true if user has a valid email, false otherwise
+ */
+export const hasValidUserEmail = async (): Promise<boolean> => {
+  try {
+    const email = await safeStorageOp(
+      async () => storage.get<string>(USER_EMAIL_KEY),
+      null
+    )
+
+    if (!email) {
+      return false
+    }
+
+    // Basic email validation - must contain @ and have some text before and after
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  } catch (error) {
+    console.error("Error checking user email:", error)
+    return false
+  }
+}
+
+/**
  * Determines if data should be collected for a given URL
- * Checks master collection toggle, URL validity, and blacklist status
+ * Checks user email, master collection toggle, URL validity, and blacklist status
  * @param url - The URL to check for data collection eligibility
  * @returns A promise resolving to true if data should be collected, false otherwise
  */
 export const shouldCollectData = async (url: string): Promise<boolean> => {
   try {
+    // First check if user has provided a valid email
+    const hasEmail = await hasValidUserEmail()
+    if (!hasEmail) {
+      return false
+    }
+
     // Parse the URL to get the domain
     const parsedUrl = new URL(url)
     const domain = parsedUrl.hostname
 
     const config = await getUserConfig()
 
-    // First check the master toggle
+    // Check the master toggle
     if (!config.masterCollectionEnabled) {
       return false
     }

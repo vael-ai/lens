@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { LensLogo } from "@/components/lens-logo";
-import { Github } from "lucide-react";
+import { Github, ArrowRight } from "lucide-react";
 import Image from "next/image";
 import { Plus_Jakarta_Sans } from "next/font/google";
 
@@ -9,112 +9,122 @@ const plusJakarta = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["400", "500
 
 export default function HomePage() {
     return (
-        <div className={"flex flex-col min-h-screen text-white relative overflow-hidden " + plusJakarta.className}>
-            {/* Navbar */}
-            <nav className="px-6 py-4">
+        <div
+            className={
+                "min-h-screen h-screen max-h-screen flex flex-col text-white relative overflow-hidden " +
+                plusJakarta.className
+            }
+        >
+            {/* Enhanced gradient background */}
+            <div
+                className="fixed inset-0 w-full h-full -z-50"
+                style={{
+                    background: `
+                        radial-gradient(circle at 30% 20%, #8F8CF3 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, #4F8DFD 0%, transparent 50%),
+                        radial-gradient(circle at 40% 40%, #6366f1 0%, transparent 50%),
+                        linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)
+                    `,
+                }}
+                aria-hidden="true"
+            />
+
+            {/* Subtle overlay for better readability */}
+            <div
+                className="fixed inset-0 w-full h-full -z-40"
+                style={{
+                    backgroundColor: "rgba(10, 10, 20, 0.4)",
+                }}
+                aria-hidden="true"
+            />
+
+            {/* Navbar - Further increased scale */}
+            <nav className="flex-shrink-0 px-10 py-7">
                 <div className="flex items-center justify-between max-w-6xl mx-auto">
-                    <div className="flex items-center gap-2 text-white font-semibold text-lg">
-                        <LensLogo className="w-8 h-8" />
-                        <span>Lens by Vael</span>
+                    <div className="flex items-center gap-3 text-xl font-medium text-white">
+                        <LensLogo className="w-12 h-12" />
+                        <span>lens by vael</span>
                     </div>
                     <Link
                         href="https://github.com/vael-ai/lens"
                         target="_blank"
-                        className="text-gray-400 hover:text-white transition-colors"
+                        className="text-gray-400 transition-colors hover:text-white"
                     >
-                        <Github className="w-5 h-5" />
+                        <Github className="w-7 h-7" />
                     </Link>
                 </div>
             </nav>
 
-            {/* Main Content */}
-            <main className="flex-1 flex items-center justify-center px-6">
-                {/* Background image gradient */}
-                <div
-                    className="fixed inset-0 -z-50 w-full h-full"
-                    style={{
-                        backgroundImage: "url(/backgroundgradient.png)",
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
-                        backgroundRepeat: "no-repeat",
-                        backgroundAttachment: "fixed",
-                        opacity: 0.35,
-                    }}
-                    aria-hidden="true"
-                />
-                {/* Dark overlay to ensure readability */}
-                <div
-                    className="fixed inset-0 -z-40 w-full h-full"
-                    style={{
-                        backgroundColor: "rgba(20, 20, 26, 0.65)",
-                    }}
-                    aria-hidden="true"
-                />
-                <div className="text-center max-w-4xl mx-auto relative z-10">
-                    {/* Logo with gradient background */}
-                    <div className="relative inline-block mb-16">
+            {/* Main Content - flex-grow to fill available space */}
+            <main className="flex items-center justify-center flex-grow px-6">
+                <div className="relative z-10 max-w-4xl mx-auto text-center">
+                    {/* Logo with hover popup effect */}
+                    <div className="relative inline-block mb-8 group">
                         <div
-                            className="absolute inset-0 w-32 h-32 mx-auto rounded-3xl opacity-80"
+                            className="absolute inset-0 w-32 h-32 mx-auto transition-opacity duration-300 rounded-3xl opacity-60 group-hover:opacity-80"
                             style={{
                                 background:
                                     "radial-gradient(circle at center, #8F8CF3 0%, #4F8DFD 40%, transparent 80%)",
-                                filter: "blur(42px)",
+                                filter: "blur(35px)",
                             }}
                         />
-                        <div className="relative bg-[#1a1a23] p-6 rounded-3xl border border-gray-800">
-                            <LensLogo className="w-20 h-20" />
+                        <div className="relative bg-[#1a1a2e]/90 backdrop-blur-sm p-6 rounded-3xl border border-gray-700/50 group-hover:border-gray-600/70 transition-all duration-300 group-hover:scale-105 group-hover:-translate-y-2 group-hover:shadow-xl group-hover:shadow-purple-500/20">
+                            <LensLogo className="w-20 h-20 hero-lens" />
                         </div>
                     </div>
 
-                    {/* Hero Text */}
-                    <h1 className="text-5xl md:text-6xl font-semibold mb-6 tracking-tight">
+                    {/* Hero Text with better spacing */}
+                    <h1 className="mb-5 text-4xl font-semibold leading-tight tracking-tight md:text-5xl lg:text-6xl">
                         The next generation
                         <br />
                         of browsing intelligence
                     </h1>
-                    <p className="text-lg text-gray-300 mb-10 max-w-2xl mx-auto">
-                        Lens by Vael is an <b className="text-white font-semibold">open source</b>, privacy-first
-                        browser extension that transforms your browsing data into beautiful, actionable insights—giving
-                        you control and context across the AI-powered web.
+                    <p className="max-w-2xl mx-auto mb-6 text-base leading-relaxed text-gray-300 md:text-lg">
+                        Lens is an <b className="font-semibold text-white">open source</b>,{" "}
+                        <b className="font-semibold text-white">privacy-first</b> browser extension that transforms your
+                        browsing data into beautiful, <b className="font-semibold text-white">actionable insights</b> —{" "}
+                        giving you <b className="font-semibold text-white">complete</b> control over your digital
+                        experience.
                     </p>
+
                     {/* CTA Buttons */}
-                    <div className="flex items-center justify-center gap-4 relative z-20">
+                    <div className="relative z-20 flex flex-wrap items-center justify-center gap-4">
                         <Button
                             size="lg"
-                            className="bg-white text-black hover:bg-gray-100 px-6 py-3 font-medium transition-colors btn-pop"
+                            className="w-48 px-8 py-4 text-base font-medium text-black transition-all duration-300 bg-white h-14 hover:bg-gray-100 btn-pop"
                         >
-                            Install Extension <span className="arrow-slide">→</span>
+                            Install Extension <ArrowRight className="w-4 h-4 arrow-slide" />
                         </Button>
                         <Link
                             href="https://twitter.com/vael_ai/status/1789380050480199922"
                             target="_blank"
-                            className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium bg-[#1a1a23] border border-gray-800 rounded-lg hover:border-gray-700 transition-colors btn-pop"
+                            className="inline-flex items-center justify-center gap-2 w-48 h-14 px-8 py-4 text-base font-medium bg-[#1a1a2e]/80 backdrop-blur-sm border border-gray-700/50 rounded-lg hover:border-gray-600/70 hover:bg-[#1a1a2e]/90 transition-all duration-300 btn-pop"
                         >
                             <span>View a demo</span>
-                            <span className="text-gray-500 arrow-bounce">↗</span>
+                            <span className="text-gray-400 arrow-bounce">↗</span>
                         </Link>
                     </div>
                 </div>
             </main>
 
-            {/* Footer */}
-            <footer className="px-6 pb-4 pt-3">
-                <div className="max-w-6xl mx-auto flex flex-row items-center justify-center gap-2 text-center">
-                    <span className="text-sm text-gray-400">Brought to you by</span>
+            {/* Footer - Fixed spacing with new logo */}
+            <footer className="flex-shrink-0 px-8 py-6">
+                <div className="flex flex-row items-center justify-center max-w-6xl gap-2 mx-auto text-center">
+                    <span className="text-base text-gray-400">Brought to you by</span>
                     <Link
                         href="https://vael.ai"
                         target="_blank"
-                        className="inline-flex items-center gap-1 align-middle group"
+                        className="inline-flex items-center gap-1 align-middle transition-all duration-300 group hover:scale-105 hover:-translate-y-1"
                         style={{ verticalAlign: "middle" }}
                     >
                         <Image
-                            src="/vael logo[1].PNG"
+                            src="/vael-logo.png"
                             alt="Vael Logo"
                             width={32}
                             height={32}
-                            className="rounded align-middle"
+                            className="align-middle transition-all duration-300 rounded group-hover:shadow-lg group-hover:shadow-blue-500/20"
                         />
-                        <span className="text-xs font-normal text-gray-300">Vael</span>
+                        <span className="text-base font-normal text-white">Vael</span>
                     </Link>
                 </div>
             </footer>

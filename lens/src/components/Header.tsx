@@ -16,14 +16,14 @@ const Header: React.FC = () => {
           <LensLogo className="w-8 h-8" />
         </div>
 
-        <h1 className="flex items-center text-lg font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+        <h1 className="flex items-center text-lg font-bold text-transparent bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text">
           lens by{" "}
           <a
             href="https://lens.vael.ai"
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity ml-1">
-            Vael
+            className="ml-1 text-transparent transition-opacity bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text hover:opacity-80">
+            vael
           </a>
         </h1>
       </div>
@@ -39,7 +39,7 @@ const Header: React.FC = () => {
           target="_blank"
           rel="noopener noreferrer"
           title="View on GitHub"
-          className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors">
+          className="transition-colors text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300">
           {/* GitHub Icon */}
           <svg
             xmlns="http://www.w3.org/2000/svg"

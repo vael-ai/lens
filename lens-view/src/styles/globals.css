@@ -120,7 +120,89 @@
     * {
         @apply border-border outline-ring/50;
     }
-    body {
-        @apply bg-background text-foreground;
+    html {
+        @apply h-full overflow-hidden;
     }
+    body {
+        @apply bg-background text-foreground h-full overflow-hidden;
+    }
+}
+
+/* Custom animations for Vael logo hover */
+@keyframes float-up {
+    from {
+        transform: translateY(0);
+    }
+    to {
+        transform: translateY(-2px);
+    }
+}
+
+.group:hover .group-hover\:-translate-y-0\.5 {
+    animation: float-up 0.2s ease-out forwards;
+}
+
+/* Custom hover effect for buttons */
+.button-test-hover:hover {
+    background-color: #ff0000 !important; /* Red for testing */
+}
+
+/* Button pop-up animation */
+@keyframes button-pop {
+    0% {
+        transform: translateY(0) scale(1);
+    }
+    50% {
+        transform: translateY(-4px) scale(1.02);
+    }
+    100% {
+        transform: translateY(-2px) scale(1.01);
+    }
+}
+
+/* Arrow slide animation */
+@keyframes arrow-slide {
+    0% {
+        transform: translateX(0);
+    }
+    50% {
+        transform: translateX(4px);
+    }
+    100% {
+        transform: translateX(2px);
+    }
+}
+
+/* Arrow bounce animation for external link */
+@keyframes arrow-bounce {
+    0% {
+        transform: translateX(0) translateY(0);
+    }
+    50% {
+        transform: translateX(2px) translateY(-2px);
+    }
+    100% {
+        transform: translateX(1px) translateY(-1px);
+    }
+}
+
+/* Button hover classes */
+.btn-pop:hover {
+    animation: button-pop 0.3s ease-out forwards;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+}
+
+.btn-pop:hover .arrow-slide {
+    animation: arrow-slide 0.3s ease-out forwards;
+}
+
+.btn-pop:hover .arrow-bounce {
+    animation: arrow-bounce 0.3s ease-out forwards;
+}
+
+/* Additional hover effects */
+.btn-pop {
+    transition: all 0.3s ease;
+    cursor: pointer;
 }

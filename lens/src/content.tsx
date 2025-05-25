@@ -23,7 +23,11 @@ import { classifyCurrentPage } from "./utils/domainClassifier"
 import { generateUUID } from "./utils/helpers"
 import { sendMessage, type MessagePayload } from "./utils/messaging"
 import type { IconPayload, MessageNames } from "./utils/messaging"
-import { getUserConfig, isDomainBlacklisted } from "./utils/userPreferences"
+import {
+  getUserConfig,
+  isDomainBlacklisted,
+  shouldCollectData
+} from "./utils/userPreferences"
 import type { UserConfig } from "./utils/userPreferences"
 
 /**
@@ -344,26 +348,26 @@ const CollectionIndicator = () => {
   const [config, setConfig] = useState<UserConfig | null>(null)
   const [isBlacklisted, setIsBlacklisted] = useState(false)
 
-  // Check if the current domain is blacklisted
+  // Check if data collection should be active for this URL
   useEffect(() => {
-    const checkBlacklist = async () => {
+    const checkCollectionStatus = async () => {
       try {
         const config = await getUserConfig()
         setConfig(config)
         const blacklisted = await isDomainBlacklisted(window.location.hostname)
         setIsBlacklisted(blacklisted)
 
-        // Set active state based on config and blacklist
-        const active = config.masterCollectionEnabled && !blacklisted
+        // Use shouldCollectData which properly checks email, master toggle, and blacklist
+        const active = await shouldCollectData(window.location.href)
 
         setIsActive(active)
       } catch (error) {
-        logNonContextError(error, "Error checking blacklist status")
+        logNonContextError(error, "Error checking collection status")
         setIsActive(false)
       }
     }
 
-    checkBlacklist()
+    checkCollectionStatus()
   }, [])
 
   // Set up interaction collection

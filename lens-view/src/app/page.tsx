@@ -74,31 +74,32 @@ export default function HomePage() {
                     </div>
 
                     {/* Hero Text with better spacing */}
-                    <h1 className="mb-5 text-4xl font-semibold leading-tight tracking-tight md:text-5xl lg:text-6xl">
+                    <h1 className="mb-5 text-5xl font-semibold leading-tight tracking-tight md:text-6xl lg:text-7xl">
                         The next generation
                         <br />
                         of browsing intelligence
                     </h1>
                     <p className="max-w-2xl mx-auto mb-6 text-base leading-relaxed text-gray-300 md:text-lg">
-                        Lens is an <b className="font-semibold text-white">open source</b>,{" "}
-                        <b className="font-semibold text-white">privacy-first</b> browser extension that transforms your
-                        browsing data into beautiful, <b className="font-semibold text-white">actionable insights</b> —{" "}
-                        giving you <b className="font-semibold text-white">complete</b> control over your digital
-                        experience.
+                        Lens is an <b className="font-semibold text-white">open-source</b>,{" "}
+                        <b className="font-semibold text-white">privacy-first</b> browser extension that captures and
+                        analyzes your browser activity with <b className="font-semibold text-white">full control</b>{" "}
+                        over your data.
+                        <br /> Get <b className="font-semibold text-white">detailed insights</b> into your browsing
+                        habits.
                     </p>
 
                     {/* CTA Buttons */}
                     <div className="relative z-20 flex flex-wrap items-center justify-center gap-4">
                         <Button
                             size="lg"
-                            className="w-48 px-8 py-4 text-base font-medium text-black transition-all duration-300 bg-white h-14 hover:bg-gray-100 btn-pop"
+                            className="flex items-center justify-center gap-2 px-6 py-4 text-base font-medium text-black transition-all duration-300 bg-white w-52 h-14 hover:bg-gray-100 btn-pop"
                         >
                             Install Extension <ArrowRight className="w-4 h-4 arrow-slide" />
                         </Button>
                         <Link
                             href="https://twitter.com/vael_ai/status/1789380050480199922"
                             target="_blank"
-                            className="inline-flex items-center justify-center gap-2 w-48 h-14 px-8 py-4 text-base font-medium bg-[#1a1a2e]/80 backdrop-blur-sm border border-gray-700/50 rounded-lg hover:border-gray-600/70 hover:bg-[#1a1a2e]/90 transition-all duration-300 btn-pop"
+                            className="inline-flex items-center justify-center gap-2 w-52 h-14 px-6 py-4 text-base font-medium bg-[#1a1a2e]/80 backdrop-blur-sm border border-gray-700/50 rounded-lg hover:border-gray-600/70 hover:bg-[#1a1a2e]/90 transition-all duration-300 btn-pop"
                         >
                             <span>View a demo</span>
                             <span className="text-gray-400 arrow-bounce">↗</span>
@@ -109,7 +110,7 @@ export default function HomePage() {
 
             {/* Footer - Fixed spacing with new logo */}
             <footer className="flex-shrink-0 px-8 py-6">
-                <div className="flex flex-row items-center justify-center max-w-6xl gap-2 mx-auto text-center">
+                <div className="flex flex-row items-center justify-center max-w-6xl gap-1 mx-auto text-center">
                     <span className="text-base text-gray-400">Brought to you by</span>
                     <Link
                         href="https://vael.ai"

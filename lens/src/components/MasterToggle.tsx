@@ -12,7 +12,7 @@ type MasterToggleProps = {
 }
 
 /**
- * A master toggle component for the Lens by Vael AI extension.
+ * A master toggle component for the lens by vael extension.
  * Controls the overall data collection functionality.
  * When disabled, it visually indicates that all settings are disabled.
  */

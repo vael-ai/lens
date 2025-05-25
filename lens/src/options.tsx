@@ -118,7 +118,7 @@ function OptionsPage() {
       about: "About"
     }
 
-    document.title = `Lens by Vael AI - ${tabTitles[activeTab as keyof typeof tabTitles] || "Settings"}`
+    document.title = `lens by vael - ${tabTitles[activeTab as keyof typeof tabTitles] || "Settings"}`
   }, [activeTab])
 
   // Load collected data when data tab is selected
@@ -446,7 +446,7 @@ function OptionsPage() {
               Advanced Settings
             </h1>
             <p className="text-slate-600 dark:text-slate-400">
-              Configure how Lens by Vael AI collects and processes your browsing
+              Configure how lens by vael collects and processes your browsing
               data to provide context for AI agents.
             </p>
           </div>
@@ -634,7 +634,7 @@ function OptionsPage() {
                     Data Collection Settings
                   </h3>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Control what types of data Lens collects from your browsing
+                    Control what types of data lens collects from your browsing
                     activity
                   </p>
                 </div>
@@ -1209,7 +1209,7 @@ function OptionsPage() {
                 </svg>
                 <div>
                   <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
-                    About Lens by Vael AI
+                    About lens by vael
                   </h3>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
                     Learn more about the extension and how it works
@@ -1219,16 +1219,16 @@ function OptionsPage() {
               <div className="p-6 space-y-6">
                 <div>
                   <h4 className="text-xl font-medium text-slate-700 dark:text-slate-300 mb-3">
-                    What is Lens by Vael AI?
+                    What is lens by vael?
                   </h4>
                   <p className="text-gray-700 dark:text-gray-300 mb-4">
-                    Lens by Vael AI is a browser extension that intelligently
+                    lens by vael is a browser extension that intelligently
                     collects and organizes information from your browsing
                     activity to provide personalized context to AI agents and
                     assistants.
                   </p>
                   <p className="text-gray-700 dark:text-gray-300">
-                    With Lens, you can give AI tools a better understanding of
+                    With lens, you can give AI tools a better understanding of
                     your interests, research, and preferences without having to
                     manually share your information each time.
                   </p>
@@ -1248,7 +1248,7 @@ function OptionsPage() {
                       <div>
                         <h5 className="text-lg font-medium">Browse the Web</h5>
                         <p className="text-gray-600">
-                          Vael runs in the background as you browse, collecting
+                          lens runs in the background as you browse, collecting
                           data based on your privacy preferences.
                         </p>
                       </div>
@@ -1276,7 +1276,7 @@ function OptionsPage() {
                           Enhance AI Interactions
                         </h5>
                         <p className="text-gray-600">
-                          When you use compatible AI tools, Vael can provide
+                          When you use compatible AI tools, lens can provide
                           this context for more personalized responses.
                         </p>
                       </div>
@@ -1291,7 +1291,7 @@ function OptionsPage() {
                     Data & Privacy
                   </h4>
                   <p className="text-gray-700 dark:text-gray-300">
-                    All data collected by Vael is stored locally on your device.
+                    All data collected by lens is stored locally on your device.
                     No browsing data is sent to our servers or shared with third
                     parties.
                   </p>
@@ -1318,13 +1318,13 @@ function OptionsPage() {
 
         {/* Footer */}
         <div className="mt-8 pt-6 text-center text-sm border-t border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
-          Lens by{" "}
+          lens by{" "}
           <a
             href="https://lens.vael.ai"
             target="_blank"
             rel="noopener noreferrer"
             className="text-purple-600 underline hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300">
-            Vael AI
+            vael
           </a>{" "}
           v{packageInfo.version}
         </div>

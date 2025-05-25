@@ -16,6 +16,7 @@ import { Storage } from "@plasmohq/storage"
 
 import packageInfo from "../package.json"
 import ErrorBoundary from "./components/ErrorBoundary"
+import { LensLogo } from "./components/LensLogo"
 import type { CollectedData, WebsiteData } from "./types/data"
 import {
   clearAllCollectedData,
@@ -685,35 +686,22 @@ function IndexPopup(): JSX.Element {
         <div className="w-full max-w-sm p-6 transition-all duration-300 bg-white border border-purple-300 rounded-lg shadow-xl dark:border-purple-700 dark:bg-slate-800/90 backdrop-blur-sm hover:shadow-2xl">
           <div className="flex justify-center mb-2">
             {/* Lens Logo */}
-            <div className="flex items-center justify-center w-20 h-20 rounded-full shadow-lg bg-gradient-to-r from-purple-500 to-indigo-600">
-              <svg
-                viewBox="0 0 24 24"
-                className="w-12 h-12 text-white"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z"
-                  fill="currentColor"
-                />
-                <path
-                  d="M12 17C14.7614 17 17 14.7614 17 12C17 9.23858 14.7614 7 12 7C9.23858 7 7 9.23858 7 12C7 14.7614 9.23858 17 12 17Z"
-                  fill="currentColor"
-                />
-              </svg>
+            <div className="flex items-center justify-center w-20 h-20">
+              <LensLogo className="w-16 h-16" />
             </div>
           </div>
           <h2 className="mb-3 text-xl font-bold text-center text-purple-600 dark:text-purple-400 animate-fade-in">
-            Welcome to Lens by Vael AI
+            Welcome to lens
           </h2>
           <div className="p-3 mb-4 text-center rounded-lg bg-slate-50 dark:bg-slate-700/30">
             <p className="mb-2 text-sm text-slate-700 dark:text-slate-300">
-              Your AI-powered browser companion that collects context to
-              generate personalized insights and reports.
+              Your privacy-first browser extension that collects browsing data
+              locally to generate AI-powered insights.
             </p>
             <p className="text-xs text-slate-600 dark:text-slate-400">
-              Lens securely captures your browsing data to help create
-              customized reports for shopping, travel, and productivity use
-              cases through our cloud services.
+              lens collects your browsing data locally and only transmits it
+              when you choose to generate reports through our secure AI analysis
+              service.
             </p>
           </div>
           <div className="space-y-4">
@@ -1354,13 +1342,13 @@ function IndexPopup(): JSX.Element {
           Note: For browser extensions, you can also use chrome.runtime.getManifest().version for the actual installed version. 
         */}
         <div className="mt-auto pt-2 text-center text-[10px] border-t border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
-          Lens by{" "}
+          lens by{" "}
           <a
             href="https://lens.vael.ai"
             target="_blank"
             rel="noopener noreferrer"
             className="text-purple-600 underline hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300">
-            Vael AI
+            vael
           </a>{" "}
           v{packageInfo.version}
         </div>

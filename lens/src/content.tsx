@@ -1,4 +1,4 @@
-// Content script for Lens by Vael AI Context Bank
+// Content script for lens by vael Context Bank
 import cssText from "data-text:./main.css"
 import type { PlasmoCSConfig } from "plasmo"
 import { useEffect, useState } from "react"

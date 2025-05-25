@@ -1,9 +1,9 @@
 {
   "name": "vael-lens",
-  "displayName": "Vael Lens",
+  "displayName": "lens by vael",
   "version": "1.0.0",
-  "description": "Securely collect and organize browsing data to provide context for AI agents",
-  "author": "Lens by Vael AI",
+  "description": "Privacy-first browser extension that collects browsing data locally to enable AI-powered insights",
+  "author": "Vael AI",
   "scripts": {
     "dev": "plasmo dev",
     "build": "pnpm exec prettier --write --log-level=silent . && plasmo build",
@@ -47,8 +47,8 @@
     "tsx": "4.19.3"
   },
   "manifest": {
-    "name": "Vael Lens",
-    "description": "Securely collect and organize browsing data to provide context for AI agents",
+    "name": "lens by vael",
+    "description": "Privacy-first browser extension that collects browsing data locally to enable AI-powered insights",
     "permissions": [
       "storage",
       "background",

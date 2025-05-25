@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-    title: "Report - Lens by Vael",
+    title: "Report - lens by vael",
     description: "Private browsing intelligence report - access requires valid credentials.",
     robots: {
         index: false,

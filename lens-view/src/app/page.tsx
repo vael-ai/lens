@@ -81,7 +81,7 @@ export default function HomePage() {
                         <span className="sm:hidden">of browsing AI</span>
                     </h1>
                     <p className="max-w-2xl mx-auto mb-6 text-sm leading-relaxed text-gray-300 sm:text-base lg:text-lg">
-                        Lens is an <b className="font-semibold text-white">open-source</b>,{" "}
+                        lens is an <b className="font-semibold text-white">open-source</b>,{" "}
                         <b className="font-semibold text-white">privacy-first</b> browser extension that captures and
                         analyzes your browser activity with <b className="font-semibold text-white">full control</b>{" "}
                         over your data.

@@ -10,7 +10,7 @@ import type {
 } from "../types/data"
 import { collectDeviceInfo } from "./collectors/device"
 /**
- * Sends collected data to the Lens by Vael AI Context Bank service
+ * Sends collected data to the lens by vael Context Bank service
  * Main entry point for sending data to the server
  * @param data - The collected data to send
  * @returns Promise resolving to true if successful, false otherwise

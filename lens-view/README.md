@@ -1,122 +1,48 @@
-# 🔍 Lens View - Browsing Intelligence Analytics Platform
+# 🔍 lens View - Browsing Intelligence Analytics Platform
 
-**Lens View** is the companion web application for the [Lens browser extension](../lens/), providing users with detailed, privacy-first analytics and insights about their browsing behavior. Built with modern web technologies and designed for scalability, Lens View transforms raw browsing data into meaningful, actionable insights.
+**lens View** is the web application companion for the [lens browser extension](../lens/), providing AI-powered analytics and insights about browsing behavior. Built with Next.js 15 and designed for scalability.
 
-## 🔒 Privacy & Security First
+**Made by [Vael](https://vael.ai)**
 
-**Your data, your control.** Lens View is built with privacy as the foundation:
+## 🔒 Privacy Architecture
 
-- **🛡️ Zero Third-Party Tracking**: No analytics, no cookies, no external data collection
+- **🛡️ Temporary Processing**: Data processed and immediately purged after report generation
 - **🔐 End-to-End Encryption**: All data transmission is encrypted and secure
-- **💾 You Own Your Data**: Complete control over your information - export or delete anytime
+- **💾 No Permanent Storage**: Reports are automatically deleted after configurable time periods
 - **🏠 Self-Hostable**: Deploy on your own infrastructure for maximum privacy
-- **⏰ Temporary Storage**: Reports are automatically purged after a configurable time period
-- **🎯 Minimal Data Collection**: Only collects what's necessary for insights generation
-- **🔓 Open Source**: Fully transparent codebase - audit the privacy measures yourself
-
----
-
-## ✨ Key Features
-
-### 🧠 AI-Powered Insights
-
-- **Smart Categorization**: Automatically categorizes websites and browsing patterns
-- **Behavior Analysis**: Identifies productivity patterns, browsing habits, and time usage
-- **Persona Detection**: Intelligently infers user types (e.g., power user, casual browser, researcher)
-- **Trend Analysis**: Tracks changes in browsing behavior over time
-
-### 📊 Rich Visualizations
-
-- **Interactive Charts**: Dynamic charts built with Recharts for exploring data
-- **Real-time Processing**: Watch your report generate in real-time with progress indicators
-- **Responsive Design**: Perfect experience across all devices and screen sizes
-- **Export Capabilities**: Download reports and share insights securely
-
-### 🚀 Performance & Scalability
-
-- **Serverless Architecture**: Built for infinite scalability with Next.js
-- **Intelligent Caching**: Optimized data fetching and caching strategies
-- **Rate Limiting**: Built-in protection against abuse
-- **Background Processing**: Heavy computations run asynchronously
-- **MongoDB Optimization**: Efficient data storage and querying
+- **🔓 Open Source**: Fully transparent codebase for privacy verification
 
 ---
 
 ## 🛠️ Tech Stack
 
-### **Frontend**
+### **Core Framework**
 
 - **[Next.js 15](https://nextjs.org/)** - React framework with App Router
 - **[React 19](https://react.dev/)** - Latest React with concurrent features
 - **[TypeScript](https://www.typescriptlang.org/)** - Type-safe development
 - **[Tailwind CSS 4](https://tailwindcss.com/)** - Utility-first styling
+
+### **UI Components**
+
 - **[shadcn/ui](https://ui.shadcn.com/)** - Modern, accessible component library
 - **[Radix UI](https://www.radix-ui.com/)** - Unstyled, accessible primitives
-
-### **Data Visualization**
-
 - **[Recharts](https://recharts.org/)** - Composable charting library
 - **[Lucide React](https://lucide.dev/)** - Beautiful, consistent icons
-- **[React Icons](https://react-icons.github.io/react-icons/)** - Popular icon packs
 
-### **Backend & APIs**
+### **Backend & Data**
 
 - **[Next.js API Routes](https://nextjs.org/docs/api-routes/introduction)** - Serverless API endpoints
 - **[MongoDB](https://www.mongodb.com/)** - Document database for flexible data storage
 - **[Zod](https://zod.dev/)** - Runtime type validation and schema parsing
-- **[JSON Web Tokens](https://jwt.io/)** - Secure authentication and authorization
-
-### **AI & Analytics**
-
 - **[Google AI SDK](https://ai.google.dev/)** - Advanced AI capabilities for insights generation
-- **[Vercel AI SDK](https://sdk.vercel.ai/)** - Streamlined AI integration
-- **Custom Analytics Engine** - Proprietary algorithms for browsing pattern analysis
 
-### **Developer Experience**
+### **Development Tools**
 
-- **[Turbopack](https://turbo.build/pack)** - Ultra-fast bundler for development
+- **[PNPM](https://pnpm.io/)** - Fast, disk space efficient package manager
+- **[Turbopack](https://turbo.build/pack)** - Next.js bundler for faster builds and development
 - **[ESLint](https://eslint.org/)** - Code linting and quality
 - **[Prettier](https://prettier.io/)** - Code formatting
-- **[PNPM](https://pnpm.io/)** - Fast, disk space efficient package manager
-
----
-
-## ❓ How It Works
-
-### 1. **Data Collection** (Browser Extension)
-
-The Lens browser extension collects anonymized browsing data including:
-
-- Website visits and time spent
-- Interaction patterns (clicks, scrolls, focus)
-- Tab management behavior
-- Navigation patterns
-
-### 2. **Secure Transmission**
-
-Data is encrypted and sent to Lens View via secure API endpoints with:
-
-- JWT-based authentication
-- Rate limiting protection
-- Data validation and sanitization
-
-### 3. **AI Processing**
-
-Advanced AI algorithms analyze the data to:
-
-- Categorize websites and activities
-- Identify productivity patterns
-- Generate behavioral insights
-- Create personalized recommendations
-
-### 4. **Visualization & Insights**
-
-Results are presented through:
-
-- Interactive, responsive charts
-- Detailed analytics dashboards
-- Exportable reports
-- Shareable insights (with privacy controls)
 
 ---
 
@@ -150,7 +76,7 @@ lens-view/
 │   │   └── 📄 utils.ts          # Helper functions
 │   ├── 📁 styles/               # Global Styles
 │   │   └── 📄 globals.css       # Tailwind + custom CSS
-│   └── 📄 env.js                # Environment validation
+│   └── 📄 env.js                # Environment validation (T3 Stack)
 ├── 📁 public/                   # Static Assets
 │   ├── 🖼️ vael-logo.png         # Company logo
 │   ├── 🖼️ lens-logo.svg         # Product logo
@@ -161,38 +87,6 @@ lens-view/
 ├── 📦 package.json              # Dependencies & scripts
 └── 📖 README.md                 # This file
 ```
-
----
-
-## 📈 Scalability & Performance
-
-### **Database Design**
-
-- **Document-based storage** for flexible schema evolution
-- **Optimized indexing** for fast query performance
-- **Horizontal scaling** support with MongoDB sharding
-- **Automatic data lifecycle** management with TTL indexes
-
-### **API Architecture**
-
-- **Serverless functions** for infinite horizontal scaling
-- **Background processing** for CPU-intensive AI analysis
-- **Rate limiting** to prevent abuse and ensure fair usage
-- **Caching strategies** for improved response times
-
-### **Frontend Optimization**
-
-- **Static generation** for marketing pages
-- **Dynamic rendering** for personalized content
-- **Code splitting** for optimal bundle sizes
-- **Image optimization** with Next.js Image component
-
-### **Monitoring & Reliability**
-
-- **Error tracking** and performance monitoring
-- **Graceful error handling** with user-friendly messages
-- **Progressive enhancement** for accessibility
-- **Mobile-first responsive design**
 
 ---
 
@@ -225,42 +119,168 @@ pnpm dev
 
 ### Environment Variables
 
+Create a `.env.local` file with the following variables:
+
 ```env
-# Database
+# Specify your server-side environment variables schema here. This way you can ensure the app
+# isn't built with invalid env vars.
+NODE_ENV=development
 MONGODB_URI=mongodb://localhost:27017/lens
+GOOGLE_GENERATIVE_AI_API_KEY=your_google_ai_key
+INTERNAL_JWT_SECRET=your_jwt_secret_min_32_chars
 
-# AI Services
-GOOGLE_AI_API_KEY=your_google_ai_key
+# Controls API endpoint connection for browser extension
+# Set to "true" for local development, "false" or omit for production
+USE_LOCAL_API=true
 
-# Security
-JWT_SECRET=your_jwt_secret
+# Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
+# useful for Docker builds.
+# SKIP_ENV_VALIDATION=true
+```
 
+### API Configuration
+
+The `USE_LOCAL_API` environment variable controls which API endpoint the browser extension connects to:
+
+- **`"true"`**: Extension connects to local development server (`http://localhost:3000`)
+- **`"false"` or unset**: Extension connects to production API (`https://lens.vael.ai`)
+
+This enables seamless development workflow where the browser extension can work with your local lens-view development server.
+
+### Development Commands
+
+```bash
+# Start development server with Turbopack
+pnpm dev
+
+# Build for production with Turbopack
+pnpm build
+
+# Start production server
+pnpm start
+
+# Linting
+pnpm lint
+```
+
+---
+
+## 🏗️ Architecture
+
+### **API Routes**
+
+- **`/api/submit-data`**: Receives browsing data from extension for processing
+- **`/api/reports/[reportId]`**: Retrieves generated reports
+- **`/api/reports/[reportId]/status`**: Checks report generation status
+- **`/api/save-email`**: Handles email subscription for reports
+- **`/api/internal/process-report`**: Internal endpoint for AI processing
+
+### **Database Design**
+
+- **Document-based storage** for flexible schema evolution
+- **Optimized indexing** for fast query performance
+- **TTL indexes** for automatic data lifecycle management
+- **Horizontal scaling** support with MongoDB sharding
+
+### **AI Processing Pipeline**
+
+- **Background processing** for CPU-intensive AI analysis
+- **Rate limiting** to prevent abuse and ensure fair usage
+- **Intelligent caching** for improved response times
+- **Real-time progress tracking** for user experience
+
+---
+
+## 🔧 Configuration
+
+### **MongoDB Setup**
+
+```bash
+# Local MongoDB
+mongod --dbpath /path/to/data/directory
+
+# Or use MongoDB Atlas for cloud deployment
+# Update MONGODB_URI in .env.local accordingly
+```
+
+### **Google AI API**
+
+1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Create a new API key
+3. Add to your `.env.local` as `GOOGLE_GENERATIVE_AI_API_KEY`
+
+### **Security Configuration**
+
+- **JWT Secret**: Must be at least 32 characters for security
+- **Rate Limiting**: Configured per endpoint to prevent abuse
+- **CORS**: Properly configured for browser extension communication
+
+---
+
+## 🚀 Deployment
+
+### **Vercel (Recommended)**
+
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy to Vercel
+vercel
+
+# Set environment variables in Vercel dashboard
+```
+
+### **Docker**
+
+```bash
+# Build Docker image
+docker build -t lens-view .
+
+# Run container
+docker run -p 3000:3000 lens-view
+```
+
+### **Self-Hosted**
+
+```bash
+# Build for production
+pnpm build
+
+# Start production server
+pnpm start
 ```
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions to make Lens View better! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on:
+1. **Fork the repository** and create a feature branch
+2. **Follow TypeScript best practices** and maintain type safety
+3. **Use Prettier/ESLint** for consistent code formatting
+4. **Test API endpoints** thoroughly
+5. **Update documentation** for new features
 
-- Code style and standards
-- Development workflow
-- Testing requirements
-- Security considerations
+### **Code Standards**
 
----
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE) - see the LICENSE file for details.
+- **TypeScript**: Strict mode enabled, full type coverage
+- **Next.js**: App Router with server components where possible
+- **API Design**: RESTful endpoints with proper error handling
+- **Security**: Follow OWASP guidelines for web applications
 
 ---
 
 ## 🔗 Related Projects
 
-- **[Lens Browser Extension](../lens/)** - The companion browser extension for data collection
-- **[Vael AI](https://vael.ai)** - The company behind Lens, focused on privacy-first AI tools
+- **[lens Browser Extension](../lens/)** - The companion browser extension for data collection
+- **[Main Project](../)** - Complete platform overview
 
 ---
 
-**Built with ❤️ by [Vael AI](https://vael.ai) - Empowering users with insights while respecting privacy.**
+## 📄 License
+
+This project is licensed under the [MIT License](../LICENSE).
+
+---
+
+**Built with ❤️ by [Vael AI](https://vael.ai)**

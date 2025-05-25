@@ -1,143 +1,266 @@
-# Lens View - AI-Powered Browsing Reports
+# 🔍 Lens View - Browsing Intelligence Analytics Platform
 
-The Next.js web application for generating and viewing browsing behavior reports powered by Gemini AI.
+**Lens View** is the companion web application for the [Lens browser extension](../lens/), providing users with detailed, privacy-first analytics and insights about their browsing behavior. Built with modern web technologies and designed for scalability, Lens View transforms raw browsing data into meaningful, actionable insights.
 
-## Environment Setup
+## 🔒 Privacy & Security First
 
-### Required Environment Variables
+**Your data, your control.** Lens View is built with privacy as the foundation:
 
-Create a `.env.local` file in the `lens-view` directory with:
+- **🛡️ Zero Third-Party Tracking**: No analytics, no cookies, no external data collection
+- **🔐 End-to-End Encryption**: All data transmission is encrypted and secure
+- **💾 You Own Your Data**: Complete control over your information - export or delete anytime
+- **🏠 Self-Hostable**: Deploy on your own infrastructure for maximum privacy
+- **⏰ Temporary Storage**: Reports are automatically purged after a configurable time period
+- **🎯 Minimal Data Collection**: Only collects what's necessary for insights generation
+- **🔓 Open Source**: Fully transparent codebase - audit the privacy measures yourself
+
+---
+
+## ✨ Key Features
+
+### 🧠 AI-Powered Insights
+
+- **Smart Categorization**: Automatically categorizes websites and browsing patterns
+- **Behavior Analysis**: Identifies productivity patterns, browsing habits, and time usage
+- **Persona Detection**: Intelligently infers user types (e.g., power user, casual browser, researcher)
+- **Trend Analysis**: Tracks changes in browsing behavior over time
+
+### 📊 Rich Visualizations
+
+- **Interactive Charts**: Dynamic charts built with Recharts for exploring data
+- **Real-time Processing**: Watch your report generate in real-time with progress indicators
+- **Responsive Design**: Perfect experience across all devices and screen sizes
+- **Export Capabilities**: Download reports and share insights securely
+
+### 🚀 Performance & Scalability
+
+- **Serverless Architecture**: Built for infinite scalability with Next.js
+- **Intelligent Caching**: Optimized data fetching and caching strategies
+- **Rate Limiting**: Built-in protection against abuse
+- **Background Processing**: Heavy computations run asynchronously
+- **MongoDB Optimization**: Efficient data storage and querying
+
+---
+
+## 🛠️ Tech Stack
+
+### **Frontend**
+
+- **[Next.js 15](https://nextjs.org/)** - React framework with App Router
+- **[React 19](https://react.dev/)** - Latest React with concurrent features
+- **[TypeScript](https://www.typescriptlang.org/)** - Type-safe development
+- **[Tailwind CSS 4](https://tailwindcss.com/)** - Utility-first styling
+- **[shadcn/ui](https://ui.shadcn.com/)** - Modern, accessible component library
+- **[Radix UI](https://www.radix-ui.com/)** - Unstyled, accessible primitives
+
+### **Data Visualization**
+
+- **[Recharts](https://recharts.org/)** - Composable charting library
+- **[Lucide React](https://lucide.dev/)** - Beautiful, consistent icons
+- **[React Icons](https://react-icons.github.io/react-icons/)** - Popular icon packs
+
+### **Backend & APIs**
+
+- **[Next.js API Routes](https://nextjs.org/docs/api-routes/introduction)** - Serverless API endpoints
+- **[MongoDB](https://www.mongodb.com/)** - Document database for flexible data storage
+- **[Zod](https://zod.dev/)** - Runtime type validation and schema parsing
+- **[JSON Web Tokens](https://jwt.io/)** - Secure authentication and authorization
+
+### **AI & Analytics**
+
+- **[Google AI SDK](https://ai.google.dev/)** - Advanced AI capabilities for insights generation
+- **[Vercel AI SDK](https://sdk.vercel.ai/)** - Streamlined AI integration
+- **Custom Analytics Engine** - Proprietary algorithms for browsing pattern analysis
+
+### **Developer Experience**
+
+- **[Turbopack](https://turbo.build/pack)** - Ultra-fast bundler for development
+- **[ESLint](https://eslint.org/)** - Code linting and quality
+- **[Prettier](https://prettier.io/)** - Code formatting
+- **[PNPM](https://pnpm.io/)** - Fast, disk space efficient package manager
+
+---
+
+## ❓ How It Works
+
+### 1. **Data Collection** (Browser Extension)
+
+The Lens browser extension collects anonymized browsing data including:
+
+- Website visits and time spent
+- Interaction patterns (clicks, scrolls, focus)
+- Tab management behavior
+- Navigation patterns
+
+### 2. **Secure Transmission**
+
+Data is encrypted and sent to Lens View via secure API endpoints with:
+
+- JWT-based authentication
+- Rate limiting protection
+- Data validation and sanitization
+
+### 3. **AI Processing**
+
+Advanced AI algorithms analyze the data to:
+
+- Categorize websites and activities
+- Identify productivity patterns
+- Generate behavioral insights
+- Create personalized recommendations
+
+### 4. **Visualization & Insights**
+
+Results are presented through:
+
+- Interactive, responsive charts
+- Detailed analytics dashboards
+- Exportable reports
+- Shareable insights (with privacy controls)
+
+---
+
+## 📁 Project Structure
+
+```
+lens-view/
+├── 📁 src/
+│   ├── 📁 app/                    # Next.js App Router
+│   │   ├── 📄 page.tsx           # Landing page
+│   │   ├── 📄 layout.tsx         # Root layout with metadata
+│   │   ├── 📄 sitemap.ts         # SEO sitemap generation
+│   │   ├── 📄 robots.ts          # SEO robots.txt
+│   │   ├── 📁 api/               # API Routes
+│   │   │   ├── 📁 submit-data/   # Data submission endpoint
+│   │   │   ├── 📁 reports/       # Report retrieval & status
+│   │   │   ├── 📁 save-email/    # Email subscription
+│   │   │   └── 📁 internal/      # Internal processing APIs
+│   │   └── 📁 reports/           # Report viewing pages
+│   │       └── 📁 [reportId]/    # Dynamic report pages
+│   ├── 📁 components/            # React Components
+│   │   ├── 📁 ui/               # shadcn/ui components
+│   │   ├── 📁 providers/        # Context providers
+│   │   ├── 📄 lens-logo.tsx     # Brand logo component
+│   │   ├── 📄 report-charts.tsx # Data visualization
+│   │   └── 📄 social-share.tsx  # Social sharing
+│   ├── 📁 lib/                  # Utilities & Configuration
+│   │   ├── 📁 mongo/            # MongoDB connection & config
+│   │   ├── 📄 auth.ts           # Authentication logic
+│   │   ├── 📄 internal-jwt.ts   # JWT utilities
+│   │   └── 📄 utils.ts          # Helper functions
+│   ├── 📁 styles/               # Global Styles
+│   │   └── 📄 globals.css       # Tailwind + custom CSS
+│   └── 📄 env.js                # Environment validation
+├── 📁 public/                   # Static Assets
+│   ├── 🖼️ vael-logo.png         # Company logo
+│   ├── 🖼️ lens-logo.svg         # Product logo
+│   └── 🎯 favicon.ico           # Site favicon
+├── ⚙️ tailwind.config.js        # Tailwind configuration
+├── ⚙️ next.config.js            # Next.js configuration
+├── ⚙️ components.json           # shadcn/ui configuration
+├── 📦 package.json              # Dependencies & scripts
+└── 📖 README.md                 # This file
+```
+
+---
+
+## 📈 Scalability & Performance
+
+### **Database Design**
+
+- **Document-based storage** for flexible schema evolution
+- **Optimized indexing** for fast query performance
+- **Horizontal scaling** support with MongoDB sharding
+- **Automatic data lifecycle** management with TTL indexes
+
+### **API Architecture**
+
+- **Serverless functions** for infinite horizontal scaling
+- **Background processing** for CPU-intensive AI analysis
+- **Rate limiting** to prevent abuse and ensure fair usage
+- **Caching strategies** for improved response times
+
+### **Frontend Optimization**
+
+- **Static generation** for marketing pages
+- **Dynamic rendering** for personalized content
+- **Code splitting** for optimal bundle sizes
+- **Image optimization** with Next.js Image component
+
+### **Monitoring & Reliability**
+
+- **Error tracking** and performance monitoring
+- **Graceful error handling** with user-friendly messages
+- **Progressive enhancement** for accessibility
+- **Mobile-first responsive design**
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- **Node.js 18+**
+- **PNPM package manager**
+- **MongoDB database** (local or cloud)
+- **Google AI API key** (for insights generation)
+
+### Installation
 
 ```bash
-# MongoDB Connection
-MONGODB_URI=your_mongodb_connection_string
-
-# Google AI API
-GOOGLE_GENERATIVE_AI_API_KEY=your_google_ai_api_key
-
-# Internal JWT Secret (minimum 32 characters)
-INTERNAL_JWT_SECRET=your-super-secure-internal-jwt-secret-key-32chars-minimum
-```
-
-## Security Architecture
-
-### JWT-Based Internal Authentication
-
-- **Public API** (`/api/submit-data`): Accepts requests from browser extension
-- **Private API** (`/api/internal/process-report`): Secured with JWT tokens
-- **Server-to-Server**: JWT tokens never exposed to client-side code
-
-### Enhanced Rate Limiting
-
-- **Per Email**: 3 reports/day, 10 reports/week
-- **Per IP**: 5 reports/hour, 15 reports/day
-- **Global**: 10 reports/minute, 100 reports/hour
-- **Automatic blocking** with clear error messages
-
-## Features
-
-### Security
-
-- **JWT Authentication**: Server-to-server token validation
-- **Multi-Layer Rate Limiting**: Email, IP, and global limits
-- **Data Change Detection**: Prevents unnecessary report generation
-- **Cached Reports**: Returns existing reports for similar data
-- **IP Tracking**: Optional IP-based abuse protection
-
-### Smart Report Generation
-
-- **Data Similarity Check**: Compares new data with previous reports
-- **Minimum Change Threshold**: Requires at least 10KB of new data
-- **Automatic Caching**: Returns cached reports for >85% similar data
-- **Progress Tracking**: Real-time progress updates with smooth animations
-
-### Error Handling
-
-- **Graceful Degradation**: Handles network errors and timeouts
-- **User-Friendly Messages**: Clear error explanations for different scenarios
-- **Rate Limit Information**: Detailed feedback on limits and retry times
-
-## API Flow
-
-```
-Extension → Public API → JWT Generation → Internal API → AI Processing
-```
-
-1. **Extension** sends request to `/api/submit-data`
-2. **Public API** validates data and checks rate limits
-3. **JWT token** generated for internal authentication
-4. **Internal API** (`/api/internal/process-report`) processes with AI
-5. **Background processing** updates progress in real-time
-
-## API Endpoints
-
-### POST /api/submit-data (Public)
-
-Accepts browsing data from browser extension.
-
-**Required Fields:**
-
-- `reportId`: UUID for the report
-- `email`: User email address
-- `userData`: Collected browsing data (10KB-1MB)
-
-**Security:**
-
-- Rate limiting per email and IP
-- Data similarity detection
-- Size validation
-
-### POST /api/internal/process-report (Private)
-
-Processes reports with AI analysis.
-
-**Authentication:**
-
-- JWT Bearer token required
-- Token includes reportId, email, timestamp
-- Server-to-server only
-
-### GET /api/reports/[reportId]/status
-
-Polls report generation progress.
-
-### GET /api/reports/[reportId]
-
-Retrieves completed report data.
-
-## Rate Limits
-
-| Scope     | Limit       | Reset      |
-| --------- | ----------- | ---------- |
-| Per Email | 3 reports   | Daily      |
-| Per Email | 10 reports  | Weekly     |
-| Per IP    | 5 reports   | Hourly     |
-| Per IP    | 15 reports  | Daily      |
-| Global    | 10 reports  | Per Minute |
-| Global    | 100 reports | Hourly     |
-
-## Installation
-
-```bash
+# Clone the repository
+git clone <repository-url>
 cd lens-view
+
+# Install dependencies
 pnpm install
+
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your configuration
+
+# Run development server
 pnpm dev
 ```
 
-## Environment Variables Reference
+### Environment Variables
 
-| Variable                       | Required | Description                                        |
-| ------------------------------ | -------- | -------------------------------------------------- |
-| `MONGODB_URI`                  | Yes      | MongoDB connection string                          |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | Yes      | Google AI API key for Gemini                       |
-| `INTERNAL_JWT_SECRET`          | Yes      | JWT secret for internal authentication (32+ chars) |
-| `NODE_ENV`                     | Auto     | Environment mode (development/production)          |
+```env
+# Database
+MONGODB_URI=mongodb://localhost:27017/lens
 
-## Development vs Production
+# AI Services
+GOOGLE_AI_API_KEY=your_google_ai_key
 
-The system automatically detects the environment:
+# Security
+JWT_SECRET=your_jwt_secret
 
-- **Development**: Internal API calls use `http://localhost:3000`
-- **Production**: Internal API calls use `https://lens.vael.ai`
+```
 
-The extension switches based on the `PLASMO_PUBLIC_USE_LOCAL_API` environment variable.
+---
+
+## 🤝 Contributing
+
+We welcome contributions to make Lens View better! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on:
+
+- Code style and standards
+- Development workflow
+- Testing requirements
+- Security considerations
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE) - see the LICENSE file for details.
+
+---
+
+## 🔗 Related Projects
+
+- **[Lens Browser Extension](../lens/)** - The companion browser extension for data collection
+- **[Vael AI](https://vael.ai)** - The company behind Lens, focused on privacy-first AI tools
+
+---
+
+**Built with ❤️ by [Vael AI](https://vael.ai) - Empowering users with insights while respecting privacy.**

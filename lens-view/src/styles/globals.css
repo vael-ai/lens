@@ -5,7 +5,7 @@
 
 @theme {
     --font-sans:
-        var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+        var(--font-plus-jakarta-sans), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
         "Segoe UI Symbol", "Noto Color Emoji";
 }
 
@@ -124,7 +124,7 @@
         @apply h-full overflow-hidden;
     }
     body {
-        @apply bg-background text-foreground h-full overflow-hidden;
+        @apply h-full overflow-hidden bg-background text-foreground;
     }
 }
 
@@ -324,4 +324,259 @@
 
 .hero-lens.lens-logo .lens-highlight {
     animation: lens-highlight-reveal 0.8s cubic-bezier(0.4, 0, 0.2, 1) 1.1s forwards;
+}
+
+/* Responsive typography and spacing adjustments */
+@media (max-width: 640px) {
+    .hero-lens.lens-logo .lens-outer-ring,
+    .hero-lens.lens-logo .lens-middle-ring,
+    .hero-lens.lens-logo .lens-inner-core,
+    .hero-lens.lens-logo .lens-highlight {
+        transform-origin: center;
+        animation-fill-mode: forwards;
+    }
+}
+
+/* Ensure no horizontal scroll on small screens */
+@media (max-width: 480px) {
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    /* Adjust button text on very small screens */
+    .btn-mobile-adjust {
+        font-size: 0.875rem;
+    }
+
+    /* Reduce hero spacing on very small screens */
+    .hero-mobile {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Viewport height adjustments for mobile browsers */
+@supports (-webkit-touch-callout: none) {
+    .min-h-screen {
+        min-height: -webkit-fill-available;
+    }
+}
+
+/* Ensure content fits without scrolling */
+@media (max-height: 700px) {
+    .hero-compact .mb-6 {
+        margin-bottom: 1rem;
+    }
+
+    .hero-compact .mb-8 {
+        margin-bottom: 1.5rem;
+    }
+
+    .hero-compact .gap-4 {
+        gap: 0.75rem;
+    }
+}
+
+@media (max-height: 600px) {
+    .hero-compact .text-3xl {
+        font-size: 1.875rem;
+        line-height: 2.25rem;
+    }
+
+    .hero-compact .text-4xl {
+        font-size: 2.25rem;
+        line-height: 2.5rem;
+    }
+
+    .hero-compact .mb-4 {
+        margin-bottom: 0.75rem;
+    }
+
+    .hero-compact .mb-6 {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Ultra-small screen optimizations */
+@media (max-width: 320px) {
+    .hero-compact h1 {
+        font-size: 1.5rem !important;
+        line-height: 2rem !important;
+    }
+
+    .hero-compact p {
+        font-size: 0.75rem !important;
+        line-height: 1.25rem !important;
+    }
+
+    .hero-compact .w-12 {
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+}
+
+/* Responsive blur effects for hero logo */
+.hero-lens-blur {
+    filter: blur(20px);
+}
+
+@media (min-width: 640px) {
+    .hero-lens-blur {
+        filter: blur(25px);
+    }
+}
+
+@media (min-width: 1024px) {
+    .hero-lens-blur {
+        filter: blur(35px);
+    }
+}
+
+/* Additional mobile optimizations */
+@media (max-width: 375px) {
+    .hero-compact h1 {
+        font-size: 1.75rem !important;
+        line-height: 2.125rem !important;
+    }
+
+    .hero-compact .gap-3 {
+        gap: 0.5rem;
+    }
+}
+
+/* Landscape mobile phones */
+@media (max-height: 500px) and (orientation: landscape) {
+    .hero-compact .mb-6 {
+        margin-bottom: 0.5rem;
+    }
+
+    .hero-compact .mb-8 {
+        margin-bottom: 1rem;
+    }
+
+    .hero-compact .py-4 {
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
+
+    .hero-compact .py-5 {
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
+    }
+}
+
+/* Critical: Ensure footer and buttons always visible */
+@media (max-height: 600px) {
+    /* Reduce main content spacing to ensure footer visibility */
+    .hero-compact {
+        transform: scale(0.9);
+        margin-bottom: 1rem;
+    }
+
+    /* Ensure buttons stack properly and remain visible */
+    .hero-compact .gap-3 {
+        gap: 0.5rem;
+    }
+
+    /* Reduce button heights for better fit */
+    .hero-compact .h-12 {
+        height: 2.5rem;
+    }
+
+    .hero-compact .sm\:h-14 {
+        height: 2.75rem;
+    }
+}
+
+/* Very short screens - aggressive optimization */
+@media (max-height: 500px) {
+    .hero-compact {
+        transform: scale(0.8);
+        margin-bottom: 0.5rem;
+    }
+
+    /* Force smaller text and spacing */
+    .hero-compact h1 {
+        font-size: 1.5rem !important;
+        line-height: 1.75rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    .hero-compact p {
+        font-size: 0.75rem !important;
+        line-height: 1rem !important;
+        margin-bottom: 0.75rem !important;
+    }
+
+    /* Ensure footer has minimum space */
+    footer {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+}
+
+/* Ultra-short screens - emergency mode */
+@media (max-height: 400px) {
+    .hero-compact {
+        transform: scale(0.7);
+        margin-bottom: 0;
+    }
+
+    /* Hide logo animation container to save space */
+    .hero-compact .mb-6,
+    .hero-compact .sm\:mb-8 {
+        margin-bottom: 0.25rem !important;
+    }
+
+    /* Compact button layout */
+    .hero-compact button,
+    .hero-compact a {
+        height: 2rem !important;
+        padding: 0.25rem 0.75rem !important;
+        font-size: 0.75rem !important;
+    }
+
+    /* Minimal footer */
+    footer {
+        padding: 0.25rem 1rem !important;
+    }
+
+    footer span,
+    footer a {
+        font-size: 0.625rem !important;
+    }
+}
+
+/* Ensure content never overflows vertically */
+@supports (height: 100dvh) {
+    .min-h-screen,
+    .h-screen,
+    .max-h-screen {
+        min-height: 100dvh;
+        height: 100dvh;
+        max-height: 100dvh;
+    }
+}
+
+/* Fallback for older browsers */
+@supports not (height: 100dvh) {
+    .min-h-screen,
+    .h-screen,
+    .max-h-screen {
+        min-height: 100vh;
+        height: 100vh;
+        max-height: 100vh;
+    }
+}
+
+/* Specific button protection - never let them disappear */
+.hero-compact .relative.z-20 {
+    flex-shrink: 0;
+    min-height: fit-content;
+}
+
+/* Footer protection - always visible */
+footer {
+    flex-shrink: 0 !important;
+    min-height: fit-content !important;
 }

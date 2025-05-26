@@ -1,0 +1,49 @@
+name: Lint | Build | Deploy to Production
+
+on:
+    push:
+        branches:
+            - main
+
+env:
+    NODE_LTS_VERSION: 22
+    VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+    VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+    lint_build:
+        name: Lint and Build
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Install pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  run_install: false
+
+            - name: Setup Node v${{ env.NODE_LTS_VERSION }}
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_LTS_VERSION }}
+                  cache: pnpm
+
+            - name: Install Dependencies
+              run: |
+                  echo "Installing Dependencies..."
+                  pnpm install --frozen-lockfile
+
+            - name: Pull Vercel Environment Information
+              run: |
+                  pnpx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+            - name: Build Project
+              run: |
+                  echo "Building..."
+                  pnpx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+            - name: Deploy Project to Production
+              run: |
+                  echo "🎉 Deploying..."
+                  pnpx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} --no-wait

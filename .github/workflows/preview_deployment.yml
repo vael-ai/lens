@@ -26,6 +26,7 @@ jobs:
             - name: Install pnpm
               uses: pnpm/action-setup@v4
               with:
+                  package_json_file: lens-view/package.json
                   run_install: false
 
             - name: Setup Node v${{ env.NODE_LTS_VERSION }}

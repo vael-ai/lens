@@ -11,6 +11,11 @@ env:
     NODE_LTS_VERSION: 22
     VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
     VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    MONGODB_URI: ${{ secrets.MONGODB_URI }}
+    GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+    INTERNAL_JWT_SECRET: ${{ secrets.INTERNAL_JWT_SECRET }}
+    USE_LOCAL_API: ${{ secrets.USE_LOCAL_API }}
 
 jobs:
     lint_build:

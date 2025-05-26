@@ -32,7 +32,7 @@ export const env = createEnv({
         MONGODB_URI: process.env.MONGODB_URI,
         GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
         INTERNAL_JWT_SECRET: process.env.INTERNAL_JWT_SECRET,
-        USE_LOCAL_API: process.env.USE_LOCAL_API === "true",
+        USE_LOCAL_API: process.env.USE_LOCAL_API,
         // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
     },
     /**

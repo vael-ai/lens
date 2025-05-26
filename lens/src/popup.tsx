@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { DATA_LIMITS, DataSizeUtils } from "@/config/data-limits"
 import { getSettingLabel } from "@/utils/labels"
 import React, { useEffect, useState } from "react"
 
@@ -32,11 +33,18 @@ import {
   USER_EMAIL_KEY
 } from "./utils/constants"
 import { createAnalyticsEvent } from "./utils/dataCollection"
+import { generateUUID, isValidUrl } from "./utils/helpers"
+import {
+  showMaxSizeReachedNotification,
+  showReportReadyNotification,
+  showWarningThresholdNotification
+} from "./utils/notifications"
 import {
   addToBlacklist,
   getUserConfig,
   hasValidUserEmail,
   removeFromBlacklist,
+  shouldCollectData,
   updateUserConfig
 } from "./utils/userPreferences"
 import type { UserConfig } from "./utils/userPreferences"
@@ -77,6 +85,8 @@ function IndexPopup(): JSX.Element {
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false)
   const [onboardingEmailInput, setOnboardingEmailInput] = useState<string>("")
+  const [dataCollectionAgreed, setDataCollectionAgreed] =
+    useState<boolean>(false)
   const [dataSizeInBytes, setDataSizeInBytes] = useState<number>(0)
   const [websiteCount, setWebsiteCount] = useState<number>(0)
   const [dataSize, setDataSize] = useState<string>("")
@@ -120,6 +130,26 @@ function IndexPopup(): JSX.Element {
     }
 
     return exactSize
+  }
+
+  const validateDataForReport = (
+    dataSize: number
+  ): { valid: boolean; reason?: string } => {
+    if (!DataSizeUtils.meetsReportMinimum(dataSize)) {
+      return {
+        valid: false,
+        reason: `Insufficient data for report generation. You need at least ${DataSizeUtils.formatBytes(DATA_LIMITS.MIN_REPORT_SIZE_BYTES)} of browsing data.`
+      }
+    }
+
+    if (!DataSizeUtils.isWithinCollectionLimit(dataSize)) {
+      return {
+        valid: false,
+        reason: `Data size exceeds maximum limit. Maximum ${DataSizeUtils.formatBytes(DATA_LIMITS.MAX_COLLECTION_SIZE_BYTES)} allowed.`
+      }
+    }
+
+    return { valid: true }
   }
 
   // Load user configuration
@@ -214,6 +244,19 @@ function IndexPopup(): JSX.Element {
   }, [activeTab])
 
   /**
+   * Set up periodic checking for completed reports
+   */
+  useEffect(() => {
+    // Check for completed reports every 15 seconds
+    const interval = setInterval(checkForCompletedReports, 15000)
+
+    // Also check immediately when component mounts
+    checkForCompletedReports()
+
+    return () => clearInterval(interval)
+  }, [userEmail]) // Re-setup when email changes
+
+  /**
    * Loads collected data and calculates statistics with caching to prevent multiple calls.
    */
   const loadCollectedData = async () => {
@@ -237,12 +280,14 @@ function IndexPopup(): JSX.Element {
       const lastUpdatedFormatted = new Date(
         lastUpdatedTimestamp
       ).toLocaleString()
-      const reportIsReady = exactExportSizeInBytes >= DATA_SIZE_THRESHOLD_BYTES
+      const reportIsReady =
+        exactExportSizeInBytes >= DATA_LIMITS.MIN_REPORT_SIZE_BYTES
 
-      // Check if user can generate a new report (if data has grown by at least 10KB since last report)
+      // Check if user can generate a new report (if data has grown by at least minimum threshold since last report)
       const dataSizeGrowth = exactExportSizeInBytes - lastReportDataSize
       const canGenerateNew =
-        lastReportDataSize === 0 || dataSizeGrowth >= DATA_SIZE_THRESHOLD_BYTES
+        lastReportDataSize === 0 ||
+        dataSizeGrowth >= DATA_LIMITS.MIN_REPORT_SIZE_BYTES
 
       setWebsiteCount(websiteCount)
       setDataSize(dataSizeFormatted)
@@ -456,6 +501,12 @@ function IndexPopup(): JSX.Element {
 
   // New function to handle onboarding form submission
   const handleOnboardingSubmit = () => {
+    // Check if user has agreed to data collection terms
+    if (!dataCollectionAgreed) {
+      alert("Please agree to the data collection terms to continue.")
+      return
+    }
+
     // IMPORTANT: Immediately update UI state - no async operations first
     // Set email even with minimal validation
     let emailToSave = onboardingEmailInput
@@ -554,25 +605,20 @@ function IndexPopup(): JSX.Element {
     // Recalculate exact export size to ensure accuracy
     const exactExportSize = calculateExactExportSize(collectedData)
 
-    if (exactExportSize < DATA_SIZE_THRESHOLD_BYTES) {
-      alert(
-        `Please collect at least ${DATA_SIZE_THRESHOLD_KB}KB of data to generate a report.`
-      )
-      return
-    }
-
-    if (exactExportSize > MAX_DATA_COLLECTION_BYTES) {
-      alert(
-        `Data size is too large (max 1MB allowed). Please clear some data and try again.`
-      )
+    // Use the new validation function
+    const validation = validateDataForReport(exactExportSize)
+    if (!validation.valid) {
+      alert(validation.reason)
       return
     }
 
     // Check if user can generate a new report
     if (!canGenerateNewReport) {
-      const requiredGrowth = DATA_SIZE_THRESHOLD_KB
+      const requiredGrowth = DataSizeUtils.formatBytes(
+        DATA_LIMITS.MIN_REPORT_SIZE_BYTES
+      )
       alert(
-        `You need to collect at least ${requiredGrowth}KB more data since your last report to generate a new one.`
+        `You need to collect at least ${requiredGrowth} more data since your last report to generate a new one.`
       )
       return
     }
@@ -624,6 +670,20 @@ function IndexPopup(): JSX.Element {
         setLastReportDataSize(exactExportSize)
         setCanGenerateNewReport(false)
 
+        // Add report to pending list for notification checking
+        const storage = new Storage()
+        const pendingReports =
+          (await storage.get<
+            { reportId: string; email: string; timestamp: number }[]
+          >("pendingReports")) || []
+        pendingReports.push({
+          reportId: reportId,
+          email: userEmail,
+          timestamp: Date.now()
+        })
+        await storage.set("pendingReports", pendingReports)
+        console.log(`Added report ${reportId} to pending notifications list`)
+
         const reportsUrl = USE_LOCAL_API
           ? "http://localhost:3000"
           : "https://lens.vael.ai"
@@ -667,6 +727,81 @@ function IndexPopup(): JSX.Element {
    */
   const resetDataCache = () => {
     setIsDataLoaded(false)
+  }
+
+  /**
+   * Test notification system (development only)
+   */
+  const testNotifications = async () => {
+    if (process.env.NODE_ENV === "development") {
+      try {
+        // Test all three notification types
+        await showReportReadyNotification(25 * 1024) // 25KB
+        setTimeout(() => showWarningThresholdNotification(400 * 1024), 2000) // 400KB
+        setTimeout(() => showMaxSizeReachedNotification(500 * 1024), 4000) // 500KB
+      } catch (error) {
+        console.error("Error testing notifications:", error)
+      }
+    }
+  }
+
+  /**
+   * Check for completed reports and show notifications
+   */
+  const checkForCompletedReports = async () => {
+    try {
+      if (!userEmail) return
+
+      const storage = new Storage()
+      const lastCheckedReports =
+        (await storage.get<string[]>("lastCheckedReports")) || []
+
+      // Check if there are any recent processing reports that might be completed
+      const pendingReports =
+        (await storage.get<
+          { reportId: string; email: string; timestamp: number }[]
+        >("pendingReports")) || []
+
+      // Check each pending report
+      for (const report of pendingReports) {
+        // If report is older than 30 seconds and not already checked
+        if (
+          Date.now() - report.timestamp > 30 * 1000 &&
+          !lastCheckedReports.includes(report.reportId)
+        ) {
+          console.log(`Checking status of report: ${report.reportId}`)
+
+          try {
+            const response = await fetch(
+              `${API_BASE_URL}/api/reports/${report.reportId}/status?email=${encodeURIComponent(report.email)}`
+            )
+            if (response.ok) {
+              const status = await response.json()
+              if (status.status === "completed") {
+                console.log(
+                  `Report ${report.reportId} is completed, showing notification`
+                )
+                await showReportCompletedNotification(report.reportId)
+
+                // Add to checked list to avoid duplicate notifications
+                const updatedChecked = [...lastCheckedReports, report.reportId]
+                await storage.set("lastCheckedReports", updatedChecked)
+
+                // Remove from pending list
+                const updatedPending = pendingReports.filter(
+                  (p) => p.reportId !== report.reportId
+                )
+                await storage.set("pendingReports", updatedPending)
+              }
+            }
+          } catch (error) {
+            console.error(`Error checking report ${report.reportId}:`, error)
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error checking for completed reports:", error)
+    }
   }
 
   if (loading) {
@@ -729,9 +864,36 @@ function IndexPopup(): JSX.Element {
                 </svg>
               </div>
             </div>
+
+            {/* Data Collection Agreement Checkbox */}
+            <div className="flex items-start space-x-3 p-3 bg-slate-50 dark:bg-slate-700/30 rounded-md border border-slate-200 dark:border-slate-600/30">
+              <input
+                type="checkbox"
+                id="dataCollectionAgreement"
+                checked={dataCollectionAgreed}
+                onChange={(e) => setDataCollectionAgreed(e.target.checked)}
+                className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-purple-300 rounded transition-colors"
+              />
+              <label
+                htmlFor="dataCollectionAgreement"
+                className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed cursor-pointer">
+                I agree to the data collection methods as described in the{" "}
+                <a
+                  href="https://github.com/vaelai/lens"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-600 dark:text-purple-400 hover:underline font-medium">
+                  GitHub repository
+                </a>
+                . Data is stored locally and only shared when I generate
+                reports.
+              </label>
+            </div>
+
             <Button
               onClick={handleOnboardingSubmit}
-              className="w-full h-10 text-sm text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 dark:from-purple-500 dark:to-indigo-500 dark:hover:from-purple-600 dark:hover:to-indigo-600 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-md">
+              disabled={!dataCollectionAgreed}
+              className="w-full h-10 text-sm text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 dark:from-purple-500 dark:to-indigo-500 dark:hover:from-purple-600 dark:hover:to-indigo-600 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
               Continue & Start Collecting
             </Button>
             <p className="text-xs text-center text-slate-500 dark:text-slate-400">
@@ -1350,7 +1512,12 @@ function IndexPopup(): JSX.Element {
             className="text-purple-600 underline hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300">
             vael
           </a>{" "}
-          v{packageInfo.version}
+          <span
+            onDoubleClick={testNotifications}
+            className="cursor-pointer"
+            title="Double-click to test notifications (dev only)">
+            v{packageInfo.version}
+          </span>
         </div>
       </div>
       {/* End of main content div */}

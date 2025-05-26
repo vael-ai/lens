@@ -2,6 +2,7 @@ import "@/styles/globals.css";
 
 import { type Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export const metadata: Metadata = {
     metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://lens.vael.ai"),
@@ -73,7 +74,9 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
         <html lang="en" className={`${plusJakartaSans.variable}`}>
-            <body>{children}</body>
+            <body>
+                <TooltipProvider>{children}</TooltipProvider>
+            </body>
         </html>
     );
 }

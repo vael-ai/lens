@@ -2,6 +2,8 @@
  * Centralized constants for the Vael Lens extension.
  */
 
+import { DATA_LIMITS } from "@/config/data-limits"
+
 // Storage Keys
 export const COLLECTED_DATA_KEY = "vael_collected_data"
 export const USER_EMAIL_KEY = "vael_user_email"
@@ -20,8 +22,9 @@ export const WEB_APP_URL_PRODUCTION = "https://view.lens.vael.ai" // Or your pro
 // Alarms
 export const CHECK_DATA_SIZE_ALARM_NAME = "checkDataSizeAlarm"
 
-// Other constants
-export const DATA_SIZE_THRESHOLD_KB = 10
-export const DATA_SIZE_THRESHOLD_BYTES = DATA_SIZE_THRESHOLD_KB * 1024
-export const MAX_DATA_COLLECTION_MB = 1
-export const MAX_DATA_COLLECTION_BYTES = MAX_DATA_COLLECTION_MB * 1024 * 1024
+// Data size constants - now using global config
+export const DATA_SIZE_THRESHOLD_KB = DATA_LIMITS.MIN_REPORT_SIZE_BYTES / 1024
+export const DATA_SIZE_THRESHOLD_BYTES = DATA_LIMITS.MIN_REPORT_SIZE_BYTES
+export const MAX_DATA_COLLECTION_MB =
+  DATA_LIMITS.MAX_COLLECTION_SIZE_BYTES / (1024 * 1024)
+export const MAX_DATA_COLLECTION_BYTES = DATA_LIMITS.MAX_COLLECTION_SIZE_BYTES

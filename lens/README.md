@@ -13,6 +13,29 @@
 - **💾 Data Ownership**: Export or delete all collected data at any time
 - **🔓 Open Source**: Fully inspectable code for transparency and security auditing
 
+## Data Collection Limits
+
+To ensure optimal performance and prevent token limits:
+
+- **Maximum Collection Size**: 500KB (512,000 bytes)
+- **Minimum Report Size**: 20KB (20,480 bytes)
+- **Maximum Domain Size**: 50KB (51,200 bytes)
+- **Warning Threshold**: 400KB (409,600 bytes)
+
+These limits ensure that:
+
+- Data collection doesn't consume excessive storage
+- AI processing stays within token limits
+- Report generation is fast and reliable
+- Full data transparency is maintained
+
+## Privacy & Security
+
+- **Strict Blacklist Enforcement**: Blacklisted domains are completely excluded from data collection
+- **Sensitive Domain Protection**: Automatically blocks banking, government, and medical sites
+- **Local Storage Only**: Data never leaves your device unless you generate a report
+- **Transparent Citations**: Every insight in reports shows exactly what data was used
+
 ---
 
 ## 🛠️ Tech Stack

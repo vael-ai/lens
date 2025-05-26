@@ -53,7 +53,8 @@
       "storage",
       "background",
       "activeTab",
-      "webNavigation"
+      "webNavigation",
+      "notifications"
     ],
     "host_permissions": [
       "http://localhost:3000/",

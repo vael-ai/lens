@@ -1,3 +1,9 @@
+import {
+  DATA_LIMITS,
+  DataSizeUtils,
+  PRIVACY_CONFIG
+} from "@/config/data-limits"
+
 import { Storage } from "@plasmohq/storage"
 
 import type {
@@ -23,7 +29,12 @@ import {
   getElementTypeDescription
 } from "./domUtils"
 import { generateUUID, isValidUrl } from "./helpers"
-import { getUserConfig, getUserId } from "./userPreferences"
+import { checkDataSizeAndNotify } from "./notifications"
+import {
+  getUserConfig,
+  getUserId,
+  isDomainBlacklisted
+} from "./userPreferences"
 
 // Get API base URL based on environment variable
 const getAPIBaseURL = () => {
@@ -946,4 +957,81 @@ export function getPlatform(): string {
 
   // Default fallback
   return "Unknown"
+}
+
+/**
+ * Validates data collection for a URL against blacklist and size limits
+ * @param url - The URL to validate
+ * @param currentDataSize - Current total data size in bytes
+ * @returns Promise resolving to validation result
+ */
+export const validateDataCollection = async (
+  url: string,
+  currentDataSize: number = 0
+): Promise<{ allowed: boolean; reason?: string }> => {
+  try {
+    // Extract domain from URL
+    const domain = new URL(url).hostname
+
+    // Check if domain is blacklisted (strict enforcement)
+    if (PRIVACY_CONFIG.STRICT_BLACKLIST_ENFORCEMENT) {
+      const isBlacklisted = await isDomainBlacklisted(domain)
+      if (isBlacklisted) {
+        return {
+          allowed: false,
+          reason: `Domain ${domain} is blacklisted and data collection is disabled`
+        }
+      }
+    }
+
+    // Check for auto-blacklist patterns
+    if (PRIVACY_CONFIG.AUTO_BLACKLIST_SENSITIVE) {
+      const isSensitive = PRIVACY_CONFIG.SENSITIVE_PATTERNS.some((pattern) =>
+        pattern.test(domain)
+      )
+      if (isSensitive) {
+        return {
+          allowed: false,
+          reason: `Domain ${domain} matches sensitive pattern and data collection is disabled`
+        }
+      }
+    }
+
+    // Check data size limits
+    if (!DataSizeUtils.isWithinCollectionLimit(currentDataSize)) {
+      return {
+        allowed: false,
+        reason: `Data size limit reached (${DataSizeUtils.formatBytes(currentDataSize)}). Maximum ${DataSizeUtils.formatBytes(DATA_LIMITS.MAX_COLLECTION_SIZE_BYTES)} allowed.`
+      }
+    }
+
+    // Warn if approaching limit
+    if (DataSizeUtils.isApproachingLimit(currentDataSize)) {
+      console.warn(
+        `Approaching data size limit: ${DataSizeUtils.formatBytes(currentDataSize)} / ${DataSizeUtils.formatBytes(DATA_LIMITS.MAX_COLLECTION_SIZE_BYTES)}`
+      )
+    }
+
+    return { allowed: true }
+  } catch (error) {
+    console.error("Error validating data collection:", error)
+    return {
+      allowed: false,
+      reason: "Error validating data collection permissions"
+    }
+  }
+}
+
+/**
+ * Checks current data size and enforces limits
+ * @returns Promise resolving to current data size in bytes
+ */
+export const getCurrentDataSize = async (): Promise<number> => {
+  try {
+    const data = await getAllCollectedData()
+    return JSON.stringify(data).length
+  } catch (error) {
+    console.error("Error getting current data size:", error)
+    return 0
+  }
 }

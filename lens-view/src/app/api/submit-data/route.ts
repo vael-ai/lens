@@ -10,6 +10,7 @@ import type { CollectedData } from "../../../../../lens/src/types/data";
 import crypto from "crypto";
 import { env } from "@/env";
 import { generateInternalToken } from "@/lib/internal-jwt";
+import { DATA_LIMITS, DataSizeUtils, RATE_LIMITS as CONFIG_RATE_LIMITS, AI_CONFIG } from "@/config/data-limits";
 
 // This endpoint should not be cached as it handles unique data submissions
 export const dynamic = "force-dynamic";
@@ -45,6 +46,10 @@ const citationSchema = z.object({
     confidence: z.number().optional(), // Confidence score (0-1)
     timeRangeStart: z.string().optional(), // ISO date string for data time range start
     timeRangeEnd: z.string().optional(), // ISO date string for data time range end
+    // NEW: Actual data references for transparency
+    dataPath: z.string(), // JSON path to the data used (e.g., "websites.amazon.com.totalFocusTime")
+    rawDataValue: z.union([z.string(), z.number(), z.array(z.any()), z.record(z.any())]).optional(), // The actual data value used
+    calculation: z.string().optional(), // How this data was calculated/derived
 });
 
 const reportSchema = z.object({
@@ -171,15 +176,8 @@ const reportSchema = z.object({
     }),
 });
 
-// Rate limiting configuration
-const RATE_LIMITS = {
-    maxReportsPerEmailPerDay: 3,
-    maxReportsPerEmailPerWeek: 10,
-    maxReportsPerIPPerHour: 5,
-    maxReportsPerIPPerDay: 15,
-    maxGlobalReportsPerMinute: 10,
-    maxGlobalReportsPerHour: 100,
-};
+// Rate limiting configuration - now imported from global config
+const RATE_LIMITS = CONFIG_RATE_LIMITS;
 
 // Input validation schema
 const submitDataSchema = z.object({
@@ -206,10 +204,10 @@ async function checkRateLimits(email: string, clientIP: string): Promise<{ allow
             createdAt: { $gte: oneDayAgo },
         });
 
-        if (emailReportsToday >= RATE_LIMITS.maxReportsPerEmailPerDay) {
+        if (emailReportsToday >= RATE_LIMITS.MAX_REPORTS_PER_EMAIL_PER_DAY) {
             return {
                 allowed: false,
-                error: `Rate limit exceeded: Maximum ${RATE_LIMITS.maxReportsPerEmailPerDay} reports per day per email. Try again tomorrow.`,
+                error: `Rate limit exceeded: Maximum ${RATE_LIMITS.MAX_REPORTS_PER_EMAIL_PER_DAY} reports per day per email. Try again tomorrow.`,
             };
         }
 
@@ -218,10 +216,10 @@ async function checkRateLimits(email: string, clientIP: string): Promise<{ allow
             createdAt: { $gte: oneWeekAgo },
         });
 
-        if (emailReportsThisWeek >= RATE_LIMITS.maxReportsPerEmailPerWeek) {
+        if (emailReportsThisWeek >= RATE_LIMITS.MAX_REPORTS_PER_EMAIL_PER_WEEK) {
             return {
                 allowed: false,
-                error: `Rate limit exceeded: Maximum ${RATE_LIMITS.maxReportsPerEmailPerWeek} reports per week per email. Try again next week.`,
+                error: `Rate limit exceeded: Maximum ${RATE_LIMITS.MAX_REPORTS_PER_EMAIL_PER_WEEK} reports per week per email. Try again next week.`,
             };
         }
 
@@ -232,7 +230,7 @@ async function checkRateLimits(email: string, clientIP: string): Promise<{ allow
                 createdAt: { $gte: oneHourAgo },
             });
 
-            if (ipReportsThisHour >= RATE_LIMITS.maxReportsPerIPPerHour) {
+            if (ipReportsThisHour >= RATE_LIMITS.MAX_REPORTS_PER_IP_PER_HOUR) {
                 return {
                     allowed: false,
                     error: `Rate limit exceeded: Too many requests from this IP. Try again in an hour.`,
@@ -244,7 +242,7 @@ async function checkRateLimits(email: string, clientIP: string): Promise<{ allow
                 createdAt: { $gte: oneDayAgo },
             });
 
-            if (ipReportsToday >= RATE_LIMITS.maxReportsPerIPPerDay) {
+            if (ipReportsToday >= RATE_LIMITS.MAX_REPORTS_PER_IP_PER_DAY) {
                 return {
                     allowed: false,
                     error: `Rate limit exceeded: Too many requests from this IP today. Try again tomorrow.`,
@@ -257,7 +255,7 @@ async function checkRateLimits(email: string, clientIP: string): Promise<{ allow
             createdAt: { $gte: oneMinuteAgo },
         });
 
-        if (globalReportsLastMinute >= RATE_LIMITS.maxGlobalReportsPerMinute) {
+        if (globalReportsLastMinute >= RATE_LIMITS.MAX_GLOBAL_REPORTS_PER_MINUTE) {
             return {
                 allowed: false,
                 error: `System busy: Too many reports being generated. Please try again in a few minutes.`,
@@ -268,7 +266,7 @@ async function checkRateLimits(email: string, clientIP: string): Promise<{ allow
             createdAt: { $gte: oneHourAgo },
         });
 
-        if (globalReportsLastHour >= RATE_LIMITS.maxGlobalReportsPerHour) {
+        if (globalReportsLastHour >= RATE_LIMITS.MAX_GLOBAL_REPORTS_PER_HOUR) {
             return {
                 allowed: false,
                 error: `System busy: High demand detected. Please try again later.`,
@@ -321,10 +319,10 @@ async function processReportInBackground(reportId: string, email: string, userDa
         // Initialize Gemini model
         const model = google("gemini-2.5-flash-preview-05-20");
 
-        // Configure generateObject options for optimal AI performance
+        // Configure generateObject options using global AI configuration
         const aiOptions = {
-            temperature: 0.2, // Low temperature for more deterministic outputs
-            maxOutputTokens: 4096, // Control output size
+            temperature: AI_CONFIG.AI_TEMPERATURE, // Use global temperature setting
+            maxOutputTokens: AI_CONFIG.MAX_OUTPUT_TOKENS, // Use global output limit
             topP: 0.95, // Slightly more focused sampling
             topK: 40, // Filter to more likely tokens
         };
@@ -335,272 +333,57 @@ async function processReportInBackground(reportId: string, email: string, userDa
         // Add small delay to show progress
         await new Promise((resolve) => setTimeout(resolve, 800));
 
-        // SMART SCALING CURVE - optimized for Gemini 2.5 Flash Preview
-        // Rate limits: 250k tokens/minute | Output limit: 65,536 tokens | Context: 1M tokens
+        // Send FULL user data to Gemini for complete transparency since data is usually under 1MB
         const userData_any = userData as any;
         const websites = userData_any.websites || {};
         const browserPatterns = userData_any.browserPatterns || {};
 
-        // Calculate raw data size for scaling decisions
+        // Calculate raw data size for logging
         const rawDataSizeKB = JSON.stringify(userData).length / 1024;
-        console.log(`Raw data size: ${Math.round(rawDataSizeKB)}KB - applying smart scaling`);
-
-        // SMART SCALING CURVE based on data size
-        let maxDomains: number;
-        let interactionDetailLevel: "full" | "detailed" | "summary" | "minimal";
-        let metadataLevel: "complete" | "essential" | "basic";
-        let engagementThreshold: number;
-
-        if (rawDataSizeKB < 50) {
-            // Small dataset: Maximum detail, more tokens
-            maxDomains = 40;
-            interactionDetailLevel = "full";
-            metadataLevel = "complete";
-            engagementThreshold = 3000; // 3 seconds - include more data
-        } else if (rawDataSizeKB < 100) {
-            // Medium dataset: High detail with some optimization
-            maxDomains = 25;
-            interactionDetailLevel = "detailed";
-            metadataLevel = "essential";
-            engagementThreshold = 5000; // 5 seconds
-        } else if (rawDataSizeKB < 200) {
-            // Large dataset: Selective detail, fewer tokens
-            maxDomains = 15;
-            interactionDetailLevel = "summary";
-            metadataLevel = "essential";
-            engagementThreshold = 10000; // 10 seconds - trim more aggressively
-        } else {
-            // Very large dataset: Minimal detail, fewest tokens
-            maxDomains = 10;
-            interactionDetailLevel = "minimal";
-            metadataLevel = "basic";
-            engagementThreshold = 20000; // 20 seconds - very selective
-        }
-
-        console.log(
-            `Scaling: ${maxDomains} domains, ${interactionDetailLevel} interactions, ${metadataLevel} metadata`
-        );
+        console.log(`Raw data size: ${Math.round(rawDataSizeKB)}KB - sending full data for transparency`);
 
         // Stage 3: Analyzing domain patterns (35%)
         await updateProgress(35, "Analyzing domain patterns");
 
-        // Get domains with smart engagement filtering
-        const sortedDomains = Object.entries(websites)
-            .filter(([domain, data]) => {
-                const domainData = data as any;
-                return domainData.totalFocusTime > engagementThreshold || domainData.visitCount > 1;
-            })
-            .sort(([, a], [, b]) => {
-                const aData = a as any;
-                const bData = b as any;
-                // Enhanced engagement score with interaction weight
-                const aScore =
-                    aData.totalFocusTime +
-                    aData.visitCount * 8000 +
-                    Object.keys(aData.interactions || {}).length * 2000;
-                const bScore =
-                    bData.totalFocusTime +
-                    bData.visitCount * 8000 +
-                    Object.keys(bData.interactions || {}).length * 2000;
-                return bScore - aScore;
-            })
-            .slice(0, maxDomains);
-
-        // Stage 4: Processing user interactions (50%)
-        await updateProgress(50, "Processing user interactions");
-
-        // Smart interaction processing based on detail level
-        const processInteractions = (interactions: any) => {
-            if (!interactions) return {};
-
-            const entries = Object.entries(interactions);
-
-            switch (interactionDetailLevel) {
-                case "full":
-                    return Object.fromEntries(
-                        entries.map(([type, interaction]) => [
-                            type,
-                            {
-                                type,
-                                count: (interaction as any).count || 0,
-                                firstOccurrence: (interaction as any).firstOccurrence,
-                                lastOccurrence: (interaction as any).lastOccurrence,
-                                averageDuration: (interaction as any).averageDuration,
-                                positions: (interaction as any).positions?.slice(0, 8) || [],
-                                targetElements: (interaction as any).targetElements?.slice(0, 5) || [],
-                                scrollPatterns: (interaction as any).scrollPatterns || null,
-                                inputFields: (interaction as any).inputFields?.slice(0, 3) || [],
-                                selectionStats: (interaction as any).selectionStats || null,
-                            },
-                        ])
-                    );
-
-                case "detailed":
-                    return Object.fromEntries(
-                        entries.slice(0, 5).map(([type, interaction]) => [
-                            type,
-                            {
-                                type,
-                                count: (interaction as any).count || 0,
-                                averageDuration: (interaction as any).averageDuration,
-                                positions: (interaction as any).positions?.slice(0, 4) || [],
-                                targetElements: (interaction as any).targetElements?.slice(0, 3) || [],
-                            },
-                        ])
-                    );
-
-                case "summary":
-                    return Object.fromEntries(
-                        entries.slice(0, 3).map(([type, interaction]) => [
-                            type,
-                            {
-                                type,
-                                count: (interaction as any).count || 0,
-                                averageDuration: (interaction as any).averageDuration,
-                            },
-                        ])
-                    );
-
-                case "minimal":
-                    return Object.fromEntries(
-                        entries.slice(0, 2).map(([type, interaction]) => [
-                            type,
-                            {
-                                type,
-                                count: (interaction as any).count || 0,
-                            },
-                        ])
-                    );
-
-                default:
-                    return {};
-            }
-        };
-
-        // Smart metadata processing
-        const processMetadata = (metadata: any) => {
-            if (!metadata) return null;
-
-            switch (metadataLevel) {
-                case "complete":
-                    return {
-                        title: metadata.title,
-                        description: metadata.description,
-                        pageType: metadata.pageType,
-                        keywords: metadata.keywords?.slice(0, 5),
-                        url: metadata.url,
-                        language: metadata.language,
-                    };
-                case "essential":
-                    return {
-                        title: metadata.title,
-                        pageType: metadata.pageType,
-                        keywords: metadata.keywords?.slice(0, 3),
-                    };
-                case "basic":
-                    return {
-                        title: metadata.title,
-                        pageType: metadata.pageType,
-                    };
-                default:
-                    return null;
-            }
-        };
-
-        // Create optimized dataset with smart scaling
-        const optimizedWebsites = Object.fromEntries(
-            sortedDomains.map(([domain, data]) => {
-                const domainData = data as any;
-                return [
-                    domain,
-                    {
-                        domain,
-                        totalFocusTime: domainData.totalFocusTime,
-                        totalFocusTimeMinutes: Math.round((domainData.totalFocusTime / 60000) * 100) / 100, // Convert ms to minutes with 2 decimal precision
-                        visitCount: domainData.visitCount,
-                        inferredDomainClassification: domainData.inferredDomainClassification,
-
-                        // Scaled interaction data
-                        interactionPatterns: processInteractions(domainData.interactions),
-
-                        // Scaled metadata
-                        pageContext: processMetadata(domainData.pageMetadata),
-
-                        // Essential domain insights only
-                        domainInsights: domainData.domainSpecificData
-                            ? {
-                                  category: domainData.domainSpecificData.category,
-                                  primaryUse: domainData.domainSpecificData.primaryUse,
-                              }
-                            : null,
-
-                        // Basic engagement metrics
-                        engagementScore: domainData.totalFocusTime + domainData.visitCount * 5000,
-                    },
-                ];
-            })
-        );
-
-        // Optimized browser patterns (always essential info only)
-        const optimizedBrowserPatterns = {
-            sessionMetrics: {
-                averageSessionDuration: browserPatterns.averageSessionDuration,
-                averageDailyTabs: browserPatterns.averageDailyTabs,
-                totalSessions: browserPatterns.totalSessions,
-            },
-            behaviorProfile: {
-                multitaskingLevel:
-                    browserPatterns.averageDailyTabs > 15
-                        ? "extreme"
-                        : browserPatterns.averageDailyTabs > 10
-                          ? "high"
-                          : browserPatterns.averageDailyTabs > 5
-                            ? "moderate"
-                            : "low",
-                primaryDomains: browserPatterns.commonDomains?.slice(0, 8) || [],
-            },
-        };
-
-        // Create final optimized dataset
-        const optimizedAnalysisData = {
+        // Send complete user data for full transparency - no optimization/scaling
+        const fullAnalysisData = {
             dataProfile: {
                 originalSize: `${Math.round(rawDataSizeKB)}KB`,
-                analyzedDomains: sortedDomains.length,
                 totalDomains: Object.keys(websites).length,
-                scalingLevel: interactionDetailLevel,
                 dataTimespan:
-                    sortedDomains.length > 0
+                    Object.keys(websites).length > 0
                         ? {
                               activeDays: Math.ceil(
                                   (Date.now() -
                                       Math.min(
-                                          ...sortedDomains.map(
-                                              ([, data]) => Number((data as any).firstVisit) || Date.now()
+                                          ...Object.values(websites).map(
+                                              (data: any) => Number(data.firstVisit) || Date.now()
                                           )
                                       )) /
                                       (1000 * 60 * 60 * 24)
                               ),
                               totalBrowsingTime: Math.round(
-                                  sortedDomains.reduce(
-                                      (sum, [, data]) => sum + (Number((data as any).totalFocusTime) || 0),
+                                  Object.values(websites).reduce(
+                                      (sum: number, data: any) => sum + (Number(data.totalFocusTime) || 0),
                                       0
                                   ) / 60000
                               ), // Convert to minutes
                           }
                         : null,
             },
-            optimizedWebsites: optimizedWebsites,
-            browserBehavior: optimizedBrowserPatterns,
+            // Send complete user data without any filtering or optimization
+            completeUserData: userData,
         };
+
+        // Stage 4: Processing user interactions (50%)
+        await updateProgress(50, "Processing user interactions");
 
         // Stage 5: Preparing AI analysis (65%)
         await updateProgress(65, "Preparing AI analysis");
 
         // Estimate tokens and log
-        const tokenEstimate = JSON.stringify(optimizedAnalysisData).length / 4;
-        console.log(
-            `Optimized processing: ${rawDataSizeKB}KB -> ${sortedDomains.length} domains (~${Math.round(tokenEstimate)} tokens)`
-        );
+        const tokenEstimate = JSON.stringify(fullAnalysisData).length / 4;
+        console.log(`Full data processing: ${rawDataSizeKB}KB (~${Math.round(tokenEstimate)} tokens)`);
 
         // Stage 6: Generating AI insights (75%)
         await updateProgress(75, "Generating AI insights");
@@ -613,11 +396,10 @@ async function processReportInBackground(reportId: string, email: string, userDa
             prompt: `You are an expert digital behavior analyst creating comprehensive browsing behavior reports. Analyze the provided data to generate detailed insights and actionable recommendations.
 
 DATA PROFILE:
-- Dataset Size: ${optimizedAnalysisData.dataProfile.originalSize}
-- Domains Analyzed: ${optimizedAnalysisData.dataProfile.analyzedDomains}/${optimizedAnalysisData.dataProfile.totalDomains}
-- Detail Level: ${optimizedAnalysisData.dataProfile.scalingLevel}
-- Active Days: ${optimizedAnalysisData.dataProfile.dataTimespan?.activeDays || "N/A"}
-- Total Browse Time: ${optimizedAnalysisData.dataProfile.dataTimespan?.totalBrowsingTime || "N/A"} minutes
+- Dataset Size: ${fullAnalysisData.dataProfile.originalSize}
+- Total Domains: ${fullAnalysisData.dataProfile.totalDomains}
+- Active Days: ${fullAnalysisData.dataProfile.dataTimespan?.activeDays || "N/A"}
+- Total Browse Time: ${fullAnalysisData.dataProfile.dataTimespan?.totalBrowsingTime || "N/A"} minutes
 
 ANALYSIS FRAMEWORK:
 1. USER BEHAVIOR PROFILING: Extract activity patterns, session characteristics, and browsing habits
@@ -630,7 +412,7 @@ CRITICAL REQUIREMENTS FOR CHART DATA:
 - visitCountByCategory: MUST use descriptive category names like "Shopping", "Productivity", "News & Media", "Travel", "Entertainment", "Social Media", "Education", "Gaming" (NEVER use numbers like 0, 1, 2, 3, 4)
 - interactionTypeBreakdown: MUST use clear interaction names like "Click", "Scroll", "Hover", "Input", "Selection", "Navigation" (NEVER use numbers)
 - sessionActivityOverTime: CURRENT DATE IS ${new Date().toISOString()}. Use readable dates in YYYY-MM-DD format with the CORRECT CURRENT YEAR ${new Date().getFullYear()} and CURRENT MONTH ${new Date().getMonth() + 1}. Do not fabricate future dates.
-- focusTimeByDomain: Use actual domain names from the data and the provided totalFocusTimeMinutes (already converted from milliseconds)
+- focusTimeByDomain: Use actual domain names from the data and convert totalFocusTime from milliseconds to minutes
 - ALL chart labels MUST be human-readable descriptive text, NEVER numeric indices or abbreviations
 
 CITATION REQUIREMENTS - CRITICAL - MUST INCLUDE FOR ACCOUNTABILITY:
@@ -640,21 +422,38 @@ CITATION REQUIREMENTS - CRITICAL - MUST INCLUDE FOR ACCOUNTABILITY:
   * dataType: Specify the type of data (e.g., "interaction", "metadata", "browsing pattern")
   * confidence: Include a confidence score from 0.1 to 1.0 based on how strongly the data supports the conclusion
   * timeRangeStart and timeRangeEnd: Use today's date ${new Date().toISOString().split("T")[0]} for time ranges if specific dates aren't available
+  * dataPath: CRITICAL - Include the exact JSON path to the data used (e.g., "websites.amazon.com.totalFocusTime", "websites.youtube.com.interactions.click.count")
+  * rawDataValue: Include the actual data value used from the browsing data (e.g., 45000, 23, ["electronics", "books"])
+  * calculation: If the insight was derived from calculations, explain how (e.g., "totalFocusTime / visitCount = average", "sum of all click counts")
 
-- Citations MUST be included for:
-  * ALL userProfileSummary data points
-  * ALL ecommerceInsights and travelInsights
-  * Each individual topWebsite entry
-  * ALL interactionPatterns data
-  * Each persona determination
-  * ALL chart data points
+TRANSPARENCY REQUIREMENTS:
+- Every citation MUST reference actual data from the provided browsing data
+- Use exact JSON paths that match the CollectedData interface structure
+- Include actual values, not estimates or rounded numbers
+- For insights based on multiple data points, show the key contributing values
+- Users should be able to trace every insight back to their raw data
 
-This report will be used with a data citation feature using Chrome Extension ID: ieffbdfmjepmohbgeagcpojgdjjheine that allows users to see exactly what data supports each insight. Users will be able to click on citations to view the raw data that supports the insights, so accuracy is critical.
+DATA PATH EXAMPLES:
+- User activity level: "browserPatterns.averageSessionDuration" with value in milliseconds
+- Domain focus time: "websites.{domain}.totalFocusTime" with exact millisecond value
+- Interaction patterns: "websites.{domain}.interactions.{type}.count" with exact count
+- Visit frequency: "websites.{domain}.visitCount" with exact number
+- Domain classification: "websites.{domain}.inferredDomainClassification.primaryType" with classification
+- Browser patterns: "browserPatterns.averageDailyTabs" with exact tab count
+
+The goal is COMPLETE TRANSPARENCY - users must be able to see exactly what data supported each conclusion.
 
 DATA UNIT CONVERSION NOTES:
-- totalFocusTimeMinutes fields are already converted from milliseconds to minutes with 2 decimal precision
-- Use totalFocusTimeMinutes directly for all focus time calculations and chart data
-- Do NOT convert from totalFocusTime (raw milliseconds) - use the pre-converted totalFocusTimeMinutes
+- Convert totalFocusTime from milliseconds to minutes for display (divide by 60000)
+- Convert averageSessionDuration from milliseconds to minutes for display (divide by 60000) 
+- Show actual millisecond values in citations for transparency
+- Use exact values from the data, not estimates
+- For averageSessionDurationMinutes: use browserPatterns.averageSessionDuration / 60000
+
+CALCULATION EXAMPLES FOR CITATIONS:
+- Average session duration: dataPath="browserPatterns.averageSessionDuration", rawDataValue=1800000, calculation="averageSessionDuration (1800000 ms) / 60000 = 30 minutes"
+- Focus time per domain: dataPath="websites.example.com.totalFocusTime", rawDataValue=120000, calculation="totalFocusTime (120000 ms) / 60000 = 2 minutes"
+- Average tabs: dataPath="browserPatterns.averageDailyTabs", rawDataValue=8, calculation="direct value from browserPatterns"
 
 INTERACTION TYPE MAPPING (use these exact names):
 - click → "Click"
@@ -685,9 +484,10 @@ REQUIREMENTS:
 - Identify actionable optimization opportunities
 - Consider temporal patterns and session behaviors
 - Ensure all chart data uses human-readable names, never numbers or indices
+- Include COMPLETE citations for every single data point and insight
 
 BROWSING DATA:
-${JSON.stringify(optimizedAnalysisData, null, 2)}`,
+${JSON.stringify(fullAnalysisData, null, 2)}`,
             maxTokens: 32000, // Leverage 2.5's higher output limit
         });
 
@@ -1036,18 +836,12 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Validate data size (minimum 10KB, maximum 1MB for reports)
+        // Validate data size using global configuration
         const dataSize = JSON.stringify(userData).length;
+        const validation = DataSizeUtils.validateDataSize(dataSize);
 
-        if (dataSize < 10 * 1024) {
-            return NextResponse.json(
-                { error: "Insufficient data for report generation. Minimum 10KB required." },
-                { status: 400 }
-            );
-        }
-
-        if (dataSize > 1 * 1024 * 1024) {
-            return NextResponse.json({ error: "Data size too large. Maximum 1MB allowed." }, { status: 400 });
+        if (!validation.valid) {
+            return NextResponse.json({ error: validation.reason }, { status: 400 });
         }
 
         console.log(`Processing report for ${email}: ${Math.round(dataSize / 1024)}KB of browsing data`);
@@ -1069,33 +863,60 @@ export async function POST(request: NextRequest) {
         if (!env.USE_LOCAL_API && recentReport && recentReport.userData) {
             const similarity = calculateDataSimilarity(userData, recentReport.userData);
 
-            // If data is very similar (>85% similarity), return cached report
-            if (similarity > 0.85) {
+            // Only return cached report if data is essentially identical (>95% similarity)
+            if (similarity > 0.95) {
                 console.log(`Returning cached report for ${email} - data similarity: ${Math.round(similarity * 100)}%`);
                 return NextResponse.json({
                     success: true,
                     reportId: recentReport.reportId,
-                    message: "Using cached report - your data hasn't changed significantly.",
+                    message: "Using cached report - your data is essentially identical.",
                     redirectUrl: `/reports/${recentReport.reportId}`,
                     cached: true,
                 });
             }
 
-            // Check if enough data has changed (at least 10KB difference)
-            const previousDataSize = JSON.stringify(recentReport.userData).length;
-            const dataDifference = Math.abs(dataSize - previousDataSize);
+            // For users with sufficient data (>=20KB), be very permissive
+            // Only block if data is extremely similar and user is trying to generate reports too frequently
+            if (dataSize >= 20 * 1024) {
+                const timeSinceLastReport = Date.now() - new Date(recentReport.completedAt).getTime();
+                const hoursSinceLastReport = timeSinceLastReport / (1000 * 60 * 60);
 
-            if (dataDifference < 10 * 1024 && similarity > 0.7) {
-                return NextResponse.json(
-                    {
-                        error: "Data hasn't changed enough to generate a new report. Please browse more websites or wait for more activity.",
-                        minimumChangeRequired: "10KB of new browsing data",
-                        currentDataSize: `${Math.round(dataSize / 1024)}KB`,
-                        previousDataSize: `${Math.round(previousDataSize / 1024)}KB`,
-                        similarity: `${Math.round(similarity * 100)}%`,
-                    },
-                    { status: 400 }
+                // Only apply similarity check if user is generating reports very frequently (< 1 hour)
+                // and data is extremely similar (>90%)
+                if (hoursSinceLastReport < 1 && similarity > 0.9) {
+                    return NextResponse.json(
+                        {
+                            error: "Please wait at least 1 hour between report generations when data is very similar.",
+                            minimumWaitTime: "1 hour",
+                            currentDataSize: `${Math.round(dataSize / 1024)}KB`,
+                            similarity: `${Math.round(similarity * 100)}%`,
+                            tip: "Browse more websites to generate meaningful new insights, or wait a bit longer.",
+                        },
+                        { status: 400 }
+                    );
+                }
+
+                // Otherwise allow report generation - user has enough data
+                console.log(
+                    `Allowing report generation for ${email} - sufficient data: ${Math.round(dataSize / 1024)}KB, similarity: ${Math.round(similarity * 100)}%`
                 );
+            } else {
+                // For smaller datasets, apply original logic but more lenient
+                const previousDataSize = JSON.stringify(recentReport.userData).length;
+                const dataDifference = Math.abs(dataSize - previousDataSize);
+
+                if (dataDifference < 5 * 1024 && similarity > 0.8) {
+                    return NextResponse.json(
+                        {
+                            error: "Data hasn't changed enough to generate a new report. Please browse more websites or wait for more activity.",
+                            minimumChangeRequired: "5KB of new browsing data or lower similarity",
+                            currentDataSize: `${Math.round(dataSize / 1024)}KB`,
+                            previousDataSize: `${Math.round(previousDataSize / 1024)}KB`,
+                            similarity: `${Math.round(similarity * 100)}%`,
+                        },
+                        { status: 400 }
+                    );
+                }
             }
         } else if (env.USE_LOCAL_API) {
             console.log(`Local API mode enabled - bypassing data similarity checks for ${email}`);

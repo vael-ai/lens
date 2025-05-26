@@ -21,6 +21,10 @@ interface Citation {
     confidence?: number;
     timeRangeStart?: string;
     timeRangeEnd?: string;
+    // NEW: Actual data references for transparency
+    dataPath: string; // JSON path to the data used (e.g., "websites.amazon.com.totalFocusTime")
+    rawDataValue?: string | number | any[] | Record<string, any>; // The actual data value used
+    calculation?: string; // How this data was calculated/derived
 }
 
 interface Report {
@@ -326,7 +330,38 @@ export default function ReportPage() {
 
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-                <div className="flex items-center justify-center min-h-screen p-4">
+                {/* Header */}
+                <header className="border-b border-gray-200 bg-white/80 backdrop-blur-sm">
+                    <div className="px-4 py-4 mx-auto max-w-7xl sm:px-6 lg:px-8 sm:py-6">
+                        <div className="flex flex-col items-start justify-between space-y-4 sm:flex-row sm:items-center sm:space-y-0">
+                            <div className="flex-1">
+                                <h1 className="text-xl font-bold text-gray-900 sm:text-2xl lg:text-3xl">
+                                    Your Browsing Intelligence Report
+                                </h1>
+                                <p className="mt-1 text-sm text-gray-600 sm:text-base">
+                                    Powered by{" "}
+                                    <Link
+                                        href="https://vael.ai"
+                                        className="text-blue-600 underline hover:text-blue-800"
+                                    >
+                                        Vael AI
+                                    </Link>
+                                </p>
+                            </div>
+                            <div className="text-left sm:text-right">
+                                <Badge variant="outline" className="mb-2 text-xs">
+                                    Report ID: {reportId.slice(0, 8)}...
+                                </Badge>
+                                <p className="text-xs text-gray-500 sm:text-sm">Generated at</p>
+                                <p className="text-xs font-medium sm:text-sm">
+                                    {status?.completedAt ? new Date(status.completedAt).toLocaleString() : "Recent"}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <main className="px-4 py-4 mx-auto max-w-7xl sm:px-6 lg:px-8 sm:py-8">
                     <div className="relative max-w-md mx-auto">
                         {/* Encouraging Message Overlay - Positioned on top of status card */}
                         {showEncouragingMessage && (
@@ -421,7 +456,7 @@ export default function ReportPage() {
                             </CardContent>
                         </Card>
                     </div>
-                </div>
+                </main>
             </div>
         );
     }
@@ -559,7 +594,12 @@ export default function ReportPage() {
                             <h1 className="text-xl font-bold text-gray-900 sm:text-2xl lg:text-3xl">
                                 Your Browsing Intelligence Report
                             </h1>
-                            <p className="mt-1 text-sm text-gray-600 sm:text-base">Powered by Vael AI</p>
+                            <p className="mt-1 text-sm text-gray-600 sm:text-base">
+                                Powered by{" "}
+                                <Link href="https://vael.ai" className="text-blue-600 underline hover:text-blue-800">
+                                    Vael AI
+                                </Link>
+                            </p>
                         </div>
                         <div className="text-left sm:text-right">
                             <Badge variant="outline" className="mb-2 text-xs">
@@ -1025,7 +1065,9 @@ export default function ReportPage() {
                 {/* Footer */}
                 <div className="py-8 mt-12 text-center border-t border-gray-200">
                     <p className="mb-2 text-gray-600">
-                        This report was generated using an AI analysis of your browsing patterns
+                        This report was generated using an AI analysis of your browsing patterns. All data may not be a
+                        real analysis. Please note that the information provided may not be entirely accurate or
+                        complete, and you should not rely solely on this data for critical decisions.
                     </p>
                     <p className="text-sm text-gray-500">
                         Powered by{" "}

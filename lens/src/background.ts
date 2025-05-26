@@ -5,6 +5,12 @@ import { createAnalyticsEvent } from "./utils/dataCollection"
 import { registerMessageHandler } from "./utils/messaging"
 import type { IconPayload } from "./utils/messaging"
 import {
+  checkDataSizeAndNotify,
+  initializeNotifications,
+  resetNotificationState,
+  showReportCompletedNotification
+} from "./utils/notifications"
+import {
   getUserConfig,
   isDomainBlacklisted,
   shouldCollectData,
@@ -191,6 +197,26 @@ registerMessageHandler("getTabId", async (_, sender) => {
     return { tabId: null, error: "Failed to get tab ID", success: false }
   }
 })
+
+// Handle report completion notifications
+registerMessageHandler<{ reportId: string; email: string }>(
+  "reportCompleted",
+  async (payload) => {
+    try {
+      console.log(
+        `Report completed notification received: ${payload.reportId} for ${payload.email}`
+      )
+      await showReportCompletedNotification(payload.reportId)
+      return { success: true }
+    } catch (error) {
+      console.error("Error handling report completion notification:", error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error"
+      }
+    }
+  }
+)
 
 // Listen for changes to browser tabs and reset icon
 try {
@@ -418,6 +444,9 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
       // Don't automatically open options page
     }
+
+    // Initialize notification system for all install/update scenarios
+    await initializeNotifications()
   } catch (error) {
     console.error("Error handling installation:", error)
   }

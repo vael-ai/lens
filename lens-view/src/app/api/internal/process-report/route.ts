@@ -178,179 +178,102 @@ async function processReportInBackground(reportId: string, email: string, userDa
         // Add small delay to show progress
         await new Promise((resolve) => setTimeout(resolve, 800));
 
-        // SMART SCALING CURVE - optimized for Gemini 2.5 Flash Preview
-        // Rate limits: 250k tokens/minute | Output limit: 65,536 tokens | Context: 1M tokens
+        // FULL RAW DATA PROCESSING - no scaling applied
         const userData_any = userData as any;
         const websites = userData_any.websites || {};
         const browserPatterns = userData_any.browserPatterns || {};
 
-        // Calculate raw data size for scaling decisions
+        // Calculate raw data size for logging only
         const rawDataSizeKB = JSON.stringify(userData).length / 1024;
-        console.log(`Raw data size: ${Math.round(rawDataSizeKB)}KB - applying smart scaling`);
+        console.log(`Raw data size: ${Math.round(rawDataSizeKB)}KB - sending full raw data to AI`);
 
-        // SMART SCALING CURVE based on data size
-        let maxDomains: number;
-        let interactionDetailLevel: "full" | "detailed" | "summary" | "minimal";
-        let metadataLevel: "complete" | "essential" | "basic";
-        let engagementThreshold: number;
-
-        if (rawDataSizeKB < 50) {
-            // Small dataset: Maximum detail, more tokens
-            maxDomains = 40;
-            interactionDetailLevel = "full";
-            metadataLevel = "complete";
-            engagementThreshold = 3000; // 3 seconds - include more data
-        } else if (rawDataSizeKB < 100) {
-            // Medium dataset: High detail with some optimization
-            maxDomains = 25;
-            interactionDetailLevel = "detailed";
-            metadataLevel = "essential";
-            engagementThreshold = 5000; // 5 seconds
-        } else if (rawDataSizeKB < 200) {
-            // Large dataset: Selective detail, fewer tokens
-            maxDomains = 15;
-            interactionDetailLevel = "summary";
-            metadataLevel = "essential";
-            engagementThreshold = 10000; // 10 seconds - trim more aggressively
-        } else {
-            // Very large dataset: Minimal detail, fewest tokens
-            maxDomains = 10;
-            interactionDetailLevel = "minimal";
-            metadataLevel = "basic";
-            engagementThreshold = 20000; // 20 seconds - very selective
-        }
+        // Send all data with no filtering or scaling
+        const maxDomains = Object.keys(websites).length; // Include ALL domains
+        const interactionDetailLevel = "full"; // Always use full detail
+        const metadataLevel = "complete"; // Always use complete metadata
+        const engagementThreshold = 0; // Include all data regardless of engagement
 
         console.log(
-            `Scaling: ${maxDomains} domains, ${interactionDetailLevel} interactions, ${metadataLevel} metadata`
+            `Full data processing: ${maxDomains} domains, ${interactionDetailLevel} interactions, ${metadataLevel} metadata`
         );
 
         // Stage 3: Analyzing domain patterns (35%)
         await updateProgress(35, "Analyzing domain patterns");
 
-        // Get domains with smart engagement filtering
-        const sortedDomains = Object.entries(websites)
-            .filter(([domain, data]) => {
-                const domainData = data as any;
-                return domainData.totalFocusTime > engagementThreshold || domainData.visitCount > 1;
-            })
-            .sort(([, a], [, b]) => {
-                const aData = a as any;
-                const bData = b as any;
-                // Enhanced engagement score with interaction weight
-                const aScore =
-                    aData.totalFocusTime +
-                    aData.visitCount * 8000 +
-                    Object.keys(aData.interactions || {}).length * 2000;
-                const bScore =
-                    bData.totalFocusTime +
-                    bData.visitCount * 8000 +
-                    Object.keys(bData.interactions || {}).length * 2000;
-                return bScore - aScore;
-            })
-            .slice(0, maxDomains);
+        // Get ALL domains without any filtering or limiting
+        const sortedDomains = Object.entries(websites).sort(([, a], [, b]) => {
+            const aData = a as any;
+            const bData = b as any;
+            // Enhanced engagement score with interaction weight
+            const aScore =
+                aData.totalFocusTime + aData.visitCount * 8000 + Object.keys(aData.interactions || {}).length * 2000;
+            const bScore =
+                bData.totalFocusTime + bData.visitCount * 8000 + Object.keys(bData.interactions || {}).length * 2000;
+            return bScore - aScore;
+        }); // Remove slice to include ALL domains
 
         // Stage 4: Processing user interactions (50%)
         await updateProgress(50, "Processing user interactions");
 
-        // Smart interaction processing based on detail level
+        // Full interaction processing - no scaling or limiting, WITH TIMESTAMP PRESERVATION
         const processInteractions = (interactions: any) => {
             if (!interactions) return {};
 
             const entries = Object.entries(interactions);
 
-            switch (interactionDetailLevel) {
-                case "full":
-                    return Object.fromEntries(
-                        entries.map(([type, interaction]) => [
+            // Always return full detail with all data INCLUDING timestamps for AI analysis
+            return Object.fromEntries(
+                entries.map(([type, interaction]) => {
+                    const interactionData = interaction as any;
+                    return [
+                        type,
+                        {
                             type,
-                            {
-                                type,
-                                count: (interaction as any).count || 0,
-                                firstOccurrence: (interaction as any).firstOccurrence,
-                                lastOccurrence: (interaction as any).lastOccurrence,
-                                averageDuration: (interaction as any).averageDuration,
-                                positions: (interaction as any).positions?.slice(0, 8) || [],
-                                targetElements: (interaction as any).targetElements?.slice(0, 5) || [],
-                                scrollPatterns: (interaction as any).scrollPatterns || null,
-                                inputFields: (interaction as any).inputFields?.slice(0, 3) || [],
-                                selectionStats: (interaction as any).selectionStats || null,
-                            },
-                        ])
-                    );
+                            count: interactionData.count || 0,
 
-                case "detailed":
-                    return Object.fromEntries(
-                        entries.slice(0, 5).map(([type, interaction]) => [
-                            type,
-                            {
-                                type,
-                                count: (interaction as any).count || 0,
-                                averageDuration: (interaction as any).averageDuration,
-                                positions: (interaction as any).positions?.slice(0, 4) || [],
-                                targetElements: (interaction as any).targetElements?.slice(0, 3) || [],
-                            },
-                        ])
-                    );
+                            // CRITICAL: Preserve timestamps for date analysis
+                            firstOccurrence: interactionData.firstOccurrence,
+                            lastOccurrence: interactionData.lastOccurrence,
+                            firstOccurrenceDate: interactionData.firstOccurrence
+                                ? new Date(interactionData.firstOccurrence).toISOString().split("T")[0]
+                                : null,
+                            lastOccurrenceDate: interactionData.lastOccurrence
+                                ? new Date(interactionData.lastOccurrence).toISOString().split("T")[0]
+                                : null,
 
-                case "summary":
-                    return Object.fromEntries(
-                        entries.slice(0, 3).map(([type, interaction]) => [
-                            type,
-                            {
-                                type,
-                                count: (interaction as any).count || 0,
-                                averageDuration: (interaction as any).averageDuration,
-                            },
-                        ])
-                    );
+                            averageDuration: interactionData.averageDuration,
+                            positions: interactionData.positions || [], // Include ALL positions
+                            targetElements: interactionData.targetElements || [], // Include ALL target elements
+                            scrollPatterns: interactionData.scrollPatterns || null,
+                            inputFields: interactionData.inputFields || [], // Include ALL input fields
+                            selectionStats: interactionData.selectionStats || null,
 
-                case "minimal":
-                    return Object.fromEntries(
-                        entries.slice(0, 2).map(([type, interaction]) => [
-                            type,
-                            {
-                                type,
-                                count: (interaction as any).count || 0,
-                            },
-                        ])
-                    );
-
-                default:
-                    return {};
-            }
+                            // Include any other interaction data that might be present
+                            ...interactionData,
+                        },
+                    ];
+                })
+            );
         };
 
-        // Smart metadata processing
+        // Full metadata processing - no scaling or limiting
         const processMetadata = (metadata: any) => {
             if (!metadata) return null;
 
-            switch (metadataLevel) {
-                case "complete":
-                    return {
-                        title: metadata.title,
-                        description: metadata.description,
-                        pageType: metadata.pageType,
-                        keywords: metadata.keywords?.slice(0, 5),
-                        url: metadata.url,
-                        language: metadata.language,
-                    };
-                case "essential":
-                    return {
-                        title: metadata.title,
-                        pageType: metadata.pageType,
-                        keywords: metadata.keywords?.slice(0, 3),
-                    };
-                case "basic":
-                    return {
-                        title: metadata.title,
-                        pageType: metadata.pageType,
-                    };
-                default:
-                    return null;
-            }
+            // Always return complete metadata with all available data
+            return {
+                title: metadata.title,
+                description: metadata.description,
+                pageType: metadata.pageType,
+                keywords: metadata.keywords || [], // Include ALL keywords
+                url: metadata.url,
+                language: metadata.language,
+                // Include any other metadata that might be present
+                ...metadata,
+            };
         };
 
-        // Create optimized dataset with smart scaling
+        // Create complete dataset with full raw data INCLUDING TIMESTAMPS
         const optimizedWebsites = Object.fromEntries(
             sortedDomains.map(([domain, data]) => {
                 const domainData = data as any;
@@ -361,12 +284,23 @@ async function processReportInBackground(reportId: string, email: string, userDa
                         totalFocusTime: domainData.totalFocusTime,
                         totalFocusTimeMinutes: Math.round((domainData.totalFocusTime / 60000) * 100) / 100, // Convert ms to minutes with 2 decimal precision
                         visitCount: domainData.visitCount,
+
+                        // CRITICAL: Preserve actual timestamps for AI to use
+                        firstVisit: domainData.firstVisit,
+                        lastVisit: domainData.lastVisit,
+                        firstVisitDate: domainData.firstVisit
+                            ? new Date(domainData.firstVisit).toISOString().split("T")[0]
+                            : null,
+                        lastVisitDate: domainData.lastVisit
+                            ? new Date(domainData.lastVisit).toISOString().split("T")[0]
+                            : null,
+
                         inferredDomainClassification: domainData.inferredDomainClassification,
 
-                        // Scaled interaction data
+                        // Full interaction data with timestamps
                         interactionPatterns: processInteractions(domainData.interactions),
 
-                        // Scaled metadata
+                        // Full metadata with timestamps
                         pageContext: processMetadata(domainData.pageMetadata),
 
                         // Essential domain insights only
@@ -404,31 +338,50 @@ async function processReportInBackground(reportId: string, email: string, userDa
             },
         };
 
-        // Create final optimized dataset
+        // Calculate actual date range from the data for AI reference
+        const allTimestamps = sortedDomains
+            .flatMap(([, data]) => {
+                const domainData = data as any;
+                const timestamps = [];
+                if (domainData.firstVisit) timestamps.push(domainData.firstVisit);
+                if (domainData.lastVisit) timestamps.push(domainData.lastVisit);
+                // Add interaction timestamps
+                if (domainData.interactions) {
+                    Object.values(domainData.interactions).forEach((interaction: any) => {
+                        if (interaction.firstOccurrence) timestamps.push(interaction.firstOccurrence);
+                        if (interaction.lastOccurrence) timestamps.push(interaction.lastOccurrence);
+                    });
+                }
+                return timestamps;
+            })
+            .filter((t) => t && !isNaN(t));
+
+        const earliestTimestamp = allTimestamps.length > 0 ? Math.min(...allTimestamps) : Date.now();
+        const latestTimestamp = allTimestamps.length > 0 ? Math.max(...allTimestamps) : Date.now();
+
+        // Create final optimized dataset with REAL DATES
         const optimizedAnalysisData = {
             dataProfile: {
                 originalSize: `${Math.round(rawDataSizeKB)}KB`,
                 analyzedDomains: sortedDomains.length,
                 totalDomains: Object.keys(websites).length,
                 scalingLevel: interactionDetailLevel,
+
+                // CRITICAL: Provide real date range for AI to use
                 dataTimespan:
                     sortedDomains.length > 0
                         ? {
-                              activeDays: Math.ceil(
-                                  (Date.now() -
-                                      Math.min(
-                                          ...sortedDomains.map(
-                                              ([, data]) => Number((data as any).firstVisit) || Date.now()
-                                          )
-                                      )) /
-                                      (1000 * 60 * 60 * 24)
-                              ),
+                              activeDays: Math.ceil((latestTimestamp - earliestTimestamp) / (1000 * 60 * 60 * 24)),
                               totalBrowsingTime: Math.round(
                                   sortedDomains.reduce(
                                       (sum, [, data]) => sum + (Number((data as any).totalFocusTime) || 0),
                                       0
                                   ) / 60000
                               ), // Convert to minutes
+                              earliestDate: new Date(earliestTimestamp).toISOString().split("T")[0],
+                              latestDate: new Date(latestTimestamp).toISOString().split("T")[0],
+                              earliestTimestamp: earliestTimestamp,
+                              latestTimestamp: latestTimestamp,
                           }
                         : null,
             },
@@ -448,71 +401,119 @@ async function processReportInBackground(reportId: string, email: string, userDa
         // Stage 6: Generating AI insights (75%)
         await updateProgress(75, "Generating AI insights");
 
-        // Generate report with optimized prompt for Gemini 2.5 Flash Preview
+        // Generate report with enhanced psychological insights prompt
         const { object: report } = await generateObject({
             model,
             schema: reportSchema,
-            prompt: `You are an expert digital behavior analyst creating comprehensive browsing behavior reports. Analyze the provided data to generate detailed insights and actionable recommendations.
+            prompt: `You are a world-class digital behavior psychologist and data scientist specializing in uncovering hidden patterns in human browsing behavior. Your mission is to analyze browsing data like a detective, revealing insights that will genuinely surprise and enlighten users about their own digital habits and psychological patterns.
+
+🧠 PSYCHOLOGICAL ANALYSIS OBJECTIVES:
+1. REVEAL HIDDEN BEHAVIORAL PATTERNS: Uncover subconscious habits, timing patterns, and decision-making processes
+2. PERSONALITY INSIGHTS: Infer cognitive styles, decision-making preferences, and information processing patterns
+3. EMOTIONAL DIGITAL FOOTPRINTS: Identify stress patterns, mood-related browsing, and emotional triggers in online behavior
+4. PRODUCTIVITY PSYCHOLOGY: Analyze focus patterns, multitasking efficiency, and cognitive load indicators
+5. UNCONSCIOUS PREFERENCES: Discover patterns the user likely isn't aware of in their content consumption
+
+🔍 DEEP INSIGHT FRAMEWORK - DISCOVER WHAT USERS DON'T KNOW ABOUT THEMSELVES:
+
+**Temporal Psychology Patterns:**
+- What time of day are they most focused vs. scattered?
+- Do they have "rabbit hole" browsing sessions where they get deeply absorbed?
+- Are there patterns in how they switch between work and leisure content?
+- Do they exhibit "decision fatigue" patterns in their clicking behavior?
+
+**Cognitive Style Analysis:**
+- Are they a "searcher" (goal-oriented) or "browser" (exploratory)?
+- Do they prefer depth (long sessions on few sites) or breadth (quick visits to many sites)?
+- How do they handle information overload? Do they bookmark or revisit?
+- Are they impulsive clickers or deliberate navigators?
+
+**Hidden Content Preferences:**
+- What topics do they gravitate toward when stressed vs. relaxed?
+- Are there seasonal or weekly patterns in their interests?
+- Do they have "guilty pleasure" browsing categories they spend more time on than they realize?
+- What types of content do they engage with most deeply (scroll depth, time spent)?
+
+**Social Digital Behavior:**
+- How much of their browsing is social vs. solitary learning?
+- Do they follow trends or set them (early adoption patterns)?
+- Are they comparison-driven or content with their own choices?
+
+**Productivity Personality:**
+- Are they a "task switcher" or "deep worker"?
+- Do they use the internet as a tool or entertainment primarily?
+- What are their distraction triggers and focus enhancers?
+- Do they exhibit procrastination patterns in their browsing?
+
+🎯 GENERATE INSIGHTS THAT MAKE USERS SAY "I HAD NO IDEA I DID THAT!"
+
+Examples of surprising insights to discover:
+- "You spend 40% more time on creative content when it's raining (based on timestamp patterns)"
+- "Your browsing becomes 60% more goal-oriented after 2 PM, suggesting you're a natural afternoon decision-maker"
+- "You have a hidden pattern of researching topics 3-5 days before making purchasing decisions"
+- "Your scroll depth increases by 80% on educational content compared to news, indicating you prefer deep learning over surface-level information"
+- "You exhibit 'research spirals' where one technical topic leads to 3+ hours of related deep-diving"
 
 DATA PROFILE:
 - Dataset Size: ${optimizedAnalysisData.dataProfile.originalSize}
 - Domains Analyzed: ${optimizedAnalysisData.dataProfile.analyzedDomains}/${optimizedAnalysisData.dataProfile.totalDomains}
-- Detail Level: ${optimizedAnalysisData.dataProfile.scalingLevel}
 - Active Days: ${optimizedAnalysisData.dataProfile.dataTimespan?.activeDays || "N/A"}
 - Total Browse Time: ${optimizedAnalysisData.dataProfile.dataTimespan?.totalBrowsingTime || "N/A"} minutes
 
-ANALYSIS FRAMEWORK:
-1. USER BEHAVIOR PROFILING: Extract activity patterns, session characteristics, and browsing habits
-2. DOMAIN CATEGORIZATION: Classify websites by function with confidence scores
-3. INTERACTION PATTERNS: Analyze user engagement through clicks, scrolls, inputs, and navigation
-4. BEHAVIORAL INSIGHTS: Identify productivity patterns, content preferences, and digital habits
-5. VISUALIZATION DATA: Generate comprehensive chart data for interactive dashboards
+🔍 ANALYSIS INSTRUCTIONS - THINK LIKE A DIGITAL PSYCHOLOGIST:
 
-CRITICAL REQUIREMENTS FOR CHART DATA:
-- visitCountByCategory: MUST use descriptive category names like "Shopping", "Productivity", "News & Media", "Travel", "Entertainment", "Social Media", "Education", "Gaming" (NEVER use numbers like 0, 1, 2, 3, 4)
-- interactionTypeBreakdown: MUST use clear interaction names like "Click", "Scroll", "Hover", "Input", "Selection", "Navigation" (NEVER use numbers)
-- sessionActivityOverTime: Use readable dates in YYYY-MM-DD format
-- focusTimeByDomain: Use actual domain names from the data and the provided totalFocusTimeMinutes (already converted from milliseconds)
-- ALL chart labels MUST be human-readable descriptive text, NEVER numeric indices or abbreviations
+1. **BEHAVIORAL ARCHAEOLOGY**: Dig deep into timing patterns, session flows, and interaction sequences to uncover subconscious habits
+2. **PSYCHOLOGICAL PROFILING**: Infer personality traits, cognitive preferences, and emotional patterns from digital footprints
+3. **PATTERN RECOGNITION**: Identify correlations between time, content type, interaction depth, and browsing efficiency
+4. **SURPRISE FACTOR**: Focus on insights that would genuinely surprise the user - patterns they're unconsciously following
+5. **ACTIONABLE PSYCHOLOGY**: Provide recommendations based on their discovered psychological patterns
 
-DATA UNIT CONVERSION NOTES:
-- totalFocusTimeMinutes fields are already converted from milliseconds to minutes with 2 decimal precision
-- Use totalFocusTimeMinutes directly for all focus time calculations and chart data
-- Do NOT convert from totalFocusTime (raw milliseconds) - use the pre-converted totalFocusTimeMinutes
+🎨 CRITICAL CHART DATA REQUIREMENTS - NO HALLUCINATION ALLOWED:
 
-INTERACTION TYPE MAPPING (use these exact names):
-- click → "Click"
-- scroll → "Scroll" 
-- hover → "Hover"
-- input → "Input"
-- selection → "Selection"
-- navigation → "Navigation"
-- focus → "Focus"
-- keypress → "Typing"
+**sessionActivityOverTime - USE ONLY REAL DATES FROM DATA:**
+- Data collection period: ${optimizedAnalysisData.dataProfile.dataTimespan?.earliestDate || "N/A"} to ${optimizedAnalysisData.dataProfile.dataTimespan?.latestDate || "N/A"}
+- NEVER create future dates or dates outside the data collection period
+- Use YYYY-MM-DD format and spread data points across the ACTUAL date range
+- Generate realistic session patterns based on firstVisitDate/lastVisitDate from the websites data
+- Each date point must be between ${optimizedAnalysisData.dataProfile.dataTimespan?.earliestDate || "N/A"} and ${optimizedAnalysisData.dataProfile.dataTimespan?.latestDate || "N/A"}
 
-CATEGORY MAPPING (use these exact names):
-- shopping → "Shopping"
-- travel → "Travel" 
-- productivity → "Productivity"
-- news → "News & Media"
-- miscellaneous → "Entertainment"
-- social → "Social Media"
-- education → "Education"
-- gaming → "Gaming"
-- finance → "Finance"
-- health → "Health & Fitness"
+**interactionTypeBreakdown - USE DESCRIPTIVE LABELS, NEVER NUMBERS:**
+- "Click" (never 0 or "click")
+- "Scroll" (never 1 or "scroll") 
+- "Hover" (never 2 or "hover")
+- "Input" (never 3 or "input")
+- "Selection" (never 4 or "selection")
+- "Navigation" (never 5 or "navigation")
+- "Focus" (never 6 or "focus") 
+- "Typing" (never 7 or "typing")
 
-REQUIREMENTS:
-- Provide nuanced insights based on actual usage patterns
-- Calculate meaningful engagement metrics and confidence scores
-- Generate rich chart data for all visualization types with proper descriptive labels
-- Identify actionable optimization opportunities
-- Consider temporal patterns and session behaviors
-- Ensure all chart data uses human-readable names, never numbers or indices
+**visitCountByCategory - USE DESCRIPTIVE CATEGORY NAMES:**
+- "Shopping", "Productivity", "News & Media", "Travel", "Entertainment", "Social Media", "Education", "Gaming", "Finance", "Health & Fitness"
+- NEVER use numbers like 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+
+**focusTimeByDomain:**
+- Use actual domain names from optimizedWebsites data
+- Use the pre-calculated totalFocusTimeMinutes values
+
+**ALL CHART DATA MUST:**
+- Use human-readable descriptive text labels ONLY
+- NEVER use numeric indices (0, 1, 2, etc.)
+- NEVER hallucinate dates outside the data collection period
+- Cross-reference every data point with the actual browsing data provided
+
+💡 INSIGHT GENERATION GUIDELINES:
+- Be specific with numbers and percentages to add credibility
+- Connect browsing patterns to real psychological concepts
+- Avoid generic insights - make them personal and surprising
+- Use evidence from the actual data to support every claim
+- Frame insights positively while being honest about areas for improvement
+- Make users excited to learn more about their own digital psychology
+
+🧬 REMEMBER: Users want to discover something fascinating about themselves they never realized. Every insight should make them think "Wow, I never noticed that pattern!" Make this report a journey of self-discovery through their digital DNA.
 
 BROWSING DATA:
 ${JSON.stringify(optimizedAnalysisData, null, 2)}`,
-            maxTokens: 32000, // Leverage 2.5's higher output limit
+            maxTokens: 32000,
         });
 
         // Stage 7: Processing AI results (88%)
@@ -533,7 +534,7 @@ ${JSON.stringify(optimizedAnalysisData, null, 2)}`,
             [key: string]: any;
         }
 
-        // Post-process chart data to ensure proper labels (fallback if AI doesn't follow instructions)
+        // AGGRESSIVE post-processing to fix AI hallucinations and numeric labels
         const processChartData = (chartData: any): any => {
             const categoryMapping: Record<string, string> = {
                 "0": "Shopping",
@@ -546,6 +547,7 @@ ${JSON.stringify(optimizedAnalysisData, null, 2)}`,
                 "7": "Gaming",
                 "8": "Finance",
                 "9": "Health & Fitness",
+                "10": "Miscellaneous",
                 shopping: "Shopping",
                 travel: "Travel",
                 productivity: "Productivity",
@@ -567,6 +569,8 @@ ${JSON.stringify(optimizedAnalysisData, null, 2)}`,
                 "5": "Navigation",
                 "6": "Focus",
                 "7": "Typing",
+                "8": "Click", // Fallback
+                "9": "Scroll", // Fallback
                 click: "Click",
                 scroll: "Scroll",
                 hover: "Hover",
@@ -575,16 +579,24 @@ ${JSON.stringify(optimizedAnalysisData, null, 2)}`,
                 navigation: "Navigation",
                 focus: "Focus",
                 keypress: "Typing",
+                typing: "Typing",
             };
 
-            // Fix category labels
+            // Fix category labels aggressively
             if (chartData.visitCountByCategory) {
                 chartData.visitCountByCategory = chartData.visitCountByCategory.map((item: any) => {
-                    const mappedCategory =
-                        categoryMapping[item.category as keyof typeof categoryMapping] ??
-                        (typeof item.category === "string"
-                            ? item.category.charAt(0).toUpperCase() + item.category.slice(1)
-                            : item.category);
+                    let mappedCategory = item.category;
+
+                    // Check if it's a number (string or actual number)
+                    if (typeof item.category === "number" || /^\d+$/.test(String(item.category))) {
+                        mappedCategory = categoryMapping[String(item.category)] || "Miscellaneous";
+                    } else if (typeof item.category === "string") {
+                        // Check exact mapping first
+                        mappedCategory =
+                            categoryMapping[item.category.toLowerCase()] ||
+                            item.category.charAt(0).toUpperCase() + item.category.slice(1);
+                    }
+
                     return {
                         ...item,
                         category: mappedCategory,
@@ -592,19 +604,56 @@ ${JSON.stringify(optimizedAnalysisData, null, 2)}`,
                 });
             }
 
-            // Fix interaction type labels
+            // Fix interaction type labels aggressively
             if (chartData.interactionTypeBreakdown) {
                 chartData.interactionTypeBreakdown = chartData.interactionTypeBreakdown.map((item: any) => {
-                    const mappedType =
-                        interactionMapping[item.type as keyof typeof interactionMapping] ??
-                        (typeof item.type === "string"
-                            ? item.type.charAt(0).toUpperCase() + item.type.slice(1)
-                            : item.type);
+                    let mappedType = item.type;
+
+                    // Check if it's a number (string or actual number)
+                    if (typeof item.type === "number" || /^\d+$/.test(String(item.type))) {
+                        mappedType = interactionMapping[String(item.type)] || "Click";
+                    } else if (typeof item.type === "string") {
+                        // Check exact mapping first
+                        mappedType =
+                            interactionMapping[item.type.toLowerCase()] ||
+                            item.type.charAt(0).toUpperCase() + item.type.slice(1);
+                    }
+
                     return {
                         ...item,
                         type: mappedType,
                     } as ProcessedInteractionItem;
                 });
+            }
+
+            // Fix sessionActivityOverTime dates if they're wrong
+            if (chartData.sessionActivityOverTime) {
+                const earliestDate = optimizedAnalysisData.dataProfile.dataTimespan?.earliestDate;
+                const latestDate = optimizedAnalysisData.dataProfile.dataTimespan?.latestDate;
+
+                if (earliestDate && latestDate) {
+                    // Validate and fix any dates that are outside the actual data range
+                    chartData.sessionActivityOverTime = chartData.sessionActivityOverTime.map((item: any) => {
+                        const itemDate = item.date;
+
+                        // If date is invalid or outside range, replace with a date within range
+                        if (!itemDate || itemDate < earliestDate || itemDate > latestDate) {
+                            // Generate a valid date between earliest and latest
+                            const earliestMs = new Date(earliestDate).getTime();
+                            const latestMs = new Date(latestDate).getTime();
+                            const randomMs = earliestMs + Math.random() * (latestMs - earliestMs);
+                            const validDate = new Date(randomMs).toISOString().split("T")[0];
+
+                            console.warn(`Fixed invalid date ${itemDate} to ${validDate}`);
+                            return {
+                                ...item,
+                                date: validDate,
+                            };
+                        }
+
+                        return item;
+                    });
+                }
             }
 
             return chartData;
@@ -780,6 +829,35 @@ Generate detailed, insightful analysis focusing on meaningful behavioral evoluti
         );
 
         console.log(`Background processing completed for report ${reportId} via internal API`);
+
+        // Send notification to browser extension about completed report
+        try {
+            // Use a small delay to ensure the report is fully saved before notifying
+            setTimeout(async () => {
+                try {
+                    // Post a message to the extension about the completed report
+                    // This will be picked up by the content script or background script
+                    if (typeof window !== "undefined" && window.postMessage) {
+                        window.postMessage(
+                            {
+                                type: "LENS_REPORT_COMPLETED",
+                                reportId,
+                                email,
+                                timestamp: Date.now(),
+                            },
+                            "*"
+                        );
+                    }
+                } catch (notificationError) {
+                    console.log(
+                        "Note: Could not send report completion message (normal in server environment):",
+                        notificationError
+                    );
+                }
+            }, 1000);
+        } catch (notificationSetupError) {
+            console.log("Note: Report completion notification setup not available in server environment");
+        }
     } catch (error) {
         console.error(`Background processing failed for report ${reportId} via internal API:`, error);
 

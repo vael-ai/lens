@@ -6,7 +6,11 @@ import { useEffect, useState } from "react"
 import { Storage } from "@plasmohq/storage"
 
 import type { InteractionData, TabActivity } from "./types/data"
-import { sendAnalyticsEvent } from "./utils/api"
+import {
+  getCurrentDataSize,
+  sendAnalyticsEvent,
+  validateDataCollection
+} from "./utils/api"
 import { collectDomainSpecificData } from "./utils/collectors/domain-specific"
 import { collectUserInteractions } from "./utils/collectors/interactions"
 import { collectPageMetadata } from "./utils/collectors/metadata"
@@ -428,6 +432,21 @@ const CollectionIndicator = () => {
       if (!isActive || !config) return
 
       try {
+        // Validate data collection before proceeding
+        const currentDataSize = await getCurrentDataSize()
+        const validation = await validateDataCollection(
+          window.location.href,
+          currentDataSize
+        )
+
+        if (!validation.allowed) {
+          console.log(
+            `lens: Data collection blocked for ${window.location.href}: ${validation.reason}`
+          )
+          updateExtensionIcon(IconState.DISABLED)
+          return
+        }
+
         // Create a unique visit ID for this page view
         const visitId = generateUUID()
 

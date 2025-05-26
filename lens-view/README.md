@@ -126,12 +126,12 @@ Create a `.env.local` file with the following variables:
 # isn't built with invalid env vars.
 NODE_ENV=development
 MONGODB_URI=mongodb://localhost:27017/lens
-GOOGLE_GENERATIVE_AI_API_KEY=your_google_ai_key
-INTERNAL_JWT_SECRET=your_jwt_secret_min_32_chars
+GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_api_key
+INTERNAL_JWT_SECRET=your_jwt_secret
 
 # Controls API endpoint connection for browser extension
 # Set to "true" for local development, "false" or omit for production
-USE_LOCAL_API=true
+USE_LOCAL_API=false
 
 # Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
 # useful for Docker builds.
@@ -284,3 +284,89 @@ This project is licensed under the [MIT License](../LICENSE).
 ---
 
 **Built with ❤️ by [Vael AI](https://vael.ai)**
+
+## Features
+
+- **AI-Powered Analysis**: Uses Google Gemini 2.5 Flash for intelligent data processing
+- **Real-time Processing**: Live progress tracking for report generation
+- **Data Transparency**: Complete citations showing exactly what data supports each insight
+- **Interactive Visualizations**: Rich charts and graphs for browsing patterns
+- **Comparison Analysis**: Track behavioral changes over time
+- **Rate Limiting**: Intelligent throttling to prevent abuse
+
+## Data Processing Limits
+
+Optimized for reliable AI processing and fast report generation:
+
+- **Maximum Data Size**: 500KB (512,000 bytes)
+- **Minimum Data Size**: 20KB (20,480 bytes)
+- **Maximum Website Data**: 50KB (51,200 bytes)
+- **Warning Threshold**: 400KB (409,600 bytes)
+
+## Rate Limits
+
+- **Per Email**: 3 reports/day, 10 reports/week
+- **Per IP**: 5 reports/hour, 15 reports/day
+- **Global**: 10 reports/minute, 100 reports/hour
+
+## AI Configuration
+
+- **Model**: Google Gemini 2.5 Flash Preview
+- **Max Input Tokens**: 800,000 (~500KB JSON data)
+- **Max Output Tokens**: 32,000
+- **Temperature**: 0.2 (deterministic outputs)
+- **Full Transparency Mode**: Enabled
+
+## API Endpoints
+
+- `POST /api/submit-data` - Submit browsing data for analysis
+- `GET /api/reports/[reportId]` - Retrieve generated reports
+- `GET /api/reports/[reportId]/status` - Check processing status
+- `POST /api/save-email` - Save user email for reports
+
+## Development
+
+```bash
+# Install dependencies
+pnpm install
+
+# Start development server
+pnpm dev
+
+# Build for production
+pnpm build
+
+# Start production server
+pnpm start
+```
+
+## Environment Variables
+
+```env
+MONGODB_URI=your_mongodb_connection_string
+GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_api_key
+INTERNAL_JWT_SECRET=your_jwt_secret
+USE_LOCAL_API=false
+```
+
+## Configuration
+
+The application uses centralized configuration in `src/config/data-limits.ts` for:
+
+- Data size validation
+- Rate limiting rules
+- AI processing parameters
+- Error messages
+
+## Deployment
+
+Optimized for Vercel deployment with:
+
+- Edge runtime support
+- MongoDB Atlas integration
+- Environment-based configuration
+- Automatic scaling
+
+## License
+
+MIT License - see LICENSE file for details.

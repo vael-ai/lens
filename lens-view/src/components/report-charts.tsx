@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CitationLink } from "@/components/citation-link";
 import {
     BarChart,
     Bar,
@@ -18,12 +19,31 @@ import {
     Legend,
 } from "recharts";
 
+// Citation interface for chart data
+interface Citation {
+    sourceId: string;
+    domainOrFeature: string;
+    dataType: string;
+    confidence?: number;
+    timeRangeStart?: string;
+    timeRangeEnd?: string;
+    dataPath: string;
+    rawDataValue?: string | number | any[] | Record<string, any>;
+    calculation?: string;
+}
+
 interface ChartData {
-    focusTimeByDomain: Array<{ domain: string; focusTimeMinutes: number }>;
-    visitCountByCategory: Array<{ category: string; visitCount: number }>;
-    sessionActivityOverTime: Array<{ date: string; sessions: number; averageSessionDuration: number }>;
-    interactionTypeBreakdown: Array<{ type: string; count: number }>;
-    scrollDepthOverTime?: Array<{ timestamp: string; scrollDepth: number }>;
+    focusTimeByDomain: Array<{ domain: string; focusTimeMinutes: number; citation: Citation }>;
+    visitCountByCategory: Array<{ category: string; visitCount: number; citation: Citation }>;
+    sessionActivityOverTime: Array<{
+        date: string;
+        sessions: number;
+        averageSessionDuration: number;
+        citation: Citation;
+    }>;
+    interactionTypeBreakdown: Array<{ type: string; count: number; citation: Citation }>;
+    scrollDepthOverTime?: Array<{ timestamp: string; scrollDepth: number; citation?: Citation }>;
+    citations: Citation[];
 }
 
 interface ReportChartsProps {
@@ -142,21 +162,51 @@ export function ReportCharts({ data }: ReportChartsProps) {
     // Check if mobile
     const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
 
-    // Custom tooltip for charts
+    // Enhanced custom tooltip for charts
     const CustomTooltip = ({ active, payload, label }: any): React.ReactElement | null => {
         if (active && payload?.length) {
+            const dataPoint = payload[0]?.payload;
+            const citation = dataPoint?.citation;
+
             return (
-                <div className="p-3 bg-white border border-gray-200 rounded-lg shadow-lg">
-                    <p className="font-medium">{label}</p>
+                <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-lg max-w-sm">
+                    <p className="font-medium text-gray-900 border-b border-gray-100 pb-2 mb-2">{label}</p>
                     {payload.map((entry: any, index: number) => (
-                        <p key={index} style={{ color: entry.color }}>
-                            {entry.name}: {entry.value}
-                            {entry.dataKey === "focusTimeMinutes" && " min"}
-                            {entry.dataKey === "sessions" && " sessions"}
-                            {entry.dataKey === "averageSessionDuration" && " min avg"}
-                            {entry.dataKey === "scrollDepth" && "%"}
-                        </p>
+                        <div key={index} className="mb-2">
+                            <p className="flex items-center justify-between" style={{ color: entry.color }}>
+                                <span className="font-medium">{entry.name}:</span>
+                                <span className="ml-2">
+                                    {entry.value}
+                                    {entry.dataKey === "focusTimeMinutes" && " min"}
+                                    {entry.dataKey === "sessions" && " sessions"}
+                                    {entry.dataKey === "averageSessionDuration" && " min avg"}
+                                    {entry.dataKey === "scrollDepth" && "%"}
+                                    {entry.dataKey === "visitCount" && " visits"}
+                                    {entry.dataKey === "count" && " interactions"}
+                                </span>
+                            </p>
+                        </div>
                     ))}
+
+                    {citation && (
+                        <div className="pt-2 mt-2 border-t border-gray-100 text-xs text-gray-600">
+                            <div className="flex items-center mb-1">
+                                <span className="font-medium">Source:</span>
+                                <span className="ml-1">{citation.domainOrFeature}</span>
+                            </div>
+                            {citation.confidence && (
+                                <div className="flex items-center mb-1">
+                                    <span className="font-medium">Confidence:</span>
+                                    <span
+                                        className={`ml-1 ${citation.confidence > 0.8 ? "text-green-600" : citation.confidence > 0.6 ? "text-orange-600" : "text-red-600"}`}
+                                    >
+                                        {Math.round(citation.confidence * 100)}%
+                                    </span>
+                                </div>
+                            )}
+                            <div className="text-xs text-gray-500 mt-1">Path: {citation.dataPath}</div>
+                        </div>
+                    )}
                 </div>
             );
         }
@@ -169,7 +219,12 @@ export function ReportCharts({ data }: ReportChartsProps) {
             {data.focusTimeByDomain.length > 0 && (
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-lg sm:text-xl">Time Spent by Website</CardTitle>
+                        <CardTitle className="text-lg sm:text-xl flex items-center">
+                            Time Spent by Website
+                            {data.focusTimeByDomain[0]?.citation && (
+                                <CitationLink citation={data.focusTimeByDomain[0].citation} className="ml-2" />
+                            )}
+                        </CardTitle>
                     </CardHeader>
                     <CardContent className="p-2 sm:p-6">
                         <ResponsiveContainer width="100%" height={getChartHeight(380)}>
@@ -205,7 +260,12 @@ export function ReportCharts({ data }: ReportChartsProps) {
             {data.visitCountByCategory.length > 0 && (
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-lg sm:text-xl">Browsing Categories</CardTitle>
+                        <CardTitle className="text-lg sm:text-xl flex items-center">
+                            Browsing Categories
+                            {data.visitCountByCategory[0]?.citation && (
+                                <CitationLink citation={data.visitCountByCategory[0].citation} className="ml-2" />
+                            )}
+                        </CardTitle>
                     </CardHeader>
                     <CardContent className="p-2 sm:p-6">
                         <ResponsiveContainer width="100%" height={getChartHeight(300)}>
@@ -258,7 +318,12 @@ export function ReportCharts({ data }: ReportChartsProps) {
             {data.sessionActivityOverTime.length > 0 && (
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-lg sm:text-xl">Browsing Activity Over Time</CardTitle>
+                        <CardTitle className="text-lg sm:text-xl flex items-center">
+                            Browsing Activity Over Time
+                            {data.sessionActivityOverTime[0]?.citation && (
+                                <CitationLink citation={data.sessionActivityOverTime[0].citation} className="ml-2" />
+                            )}
+                        </CardTitle>
                     </CardHeader>
                     <CardContent className="p-2 sm:p-6">
                         <ResponsiveContainer width="100%" height={getChartHeight(300)}>
@@ -276,11 +341,27 @@ export function ReportCharts({ data }: ReportChartsProps) {
                                     dataKey="date"
                                     tickFormatter={(value) => {
                                         // Parse the date string to ensure proper formatting
-                                        const date = new Date(value);
+                                        let date;
+
+                                        // Handle various date formats
+                                        if (typeof value === "string") {
+                                            // Try parsing as ISO string first
+                                            date = new Date(value);
+
+                                            // If that fails, try parsing as YYYY-MM-DD
+                                            if (isNaN(date.getTime()) && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                                                date = new Date(value + "T00:00:00");
+                                            }
+                                        } else if (typeof value === "number") {
+                                            date = new Date(value);
+                                        } else {
+                                            date = new Date(value);
+                                        }
 
                                         // Check if date is valid
                                         if (isNaN(date.getTime())) {
-                                            return "Invalid date";
+                                            console.warn("Invalid date value:", value);
+                                            return String(value);
                                         }
 
                                         // Use more detailed formatting
@@ -299,8 +380,24 @@ export function ReportCharts({ data }: ReportChartsProps) {
                                 <Tooltip
                                     content={<CustomTooltip />}
                                     labelFormatter={(value) => {
-                                        const date = new Date(value);
-                                        if (isNaN(date.getTime())) return "Invalid date";
+                                        let date;
+
+                                        // Handle various date formats
+                                        if (typeof value === "string") {
+                                            date = new Date(value);
+                                            if (isNaN(date.getTime()) && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                                                date = new Date(value + "T00:00:00");
+                                            }
+                                        } else if (typeof value === "number") {
+                                            date = new Date(value);
+                                        } else {
+                                            date = new Date(value);
+                                        }
+
+                                        if (isNaN(date.getTime())) {
+                                            console.warn("Invalid date in tooltip:", value);
+                                            return String(value);
+                                        }
 
                                         // Show more detailed date in tooltip including weekday
                                         return date.toLocaleDateString("en-US", {
@@ -344,7 +441,12 @@ export function ReportCharts({ data }: ReportChartsProps) {
             {data.interactionTypeBreakdown.length > 0 && (
                 <Card>
                     <CardHeader>
-                        <CardTitle className="text-lg sm:text-xl">Interaction Patterns</CardTitle>
+                        <CardTitle className="text-lg sm:text-xl flex items-center">
+                            Interaction Patterns
+                            {data.interactionTypeBreakdown[0]?.citation && (
+                                <CitationLink citation={data.interactionTypeBreakdown[0].citation} className="ml-2" />
+                            )}
+                        </CardTitle>
                     </CardHeader>
                     <CardContent className="p-2 sm:p-6">
                         <ResponsiveContainer width="100%" height={getChartHeight(280)}>
@@ -352,12 +454,24 @@ export function ReportCharts({ data }: ReportChartsProps) {
                                 data={data.interactionTypeBreakdown.map((item) => ({
                                     ...item,
                                     // Map interaction type to human-readable format
-                                    label:
-                                        typeof item.type === "string" && /^\d+$/.exec(item.type)
-                                            ? INTERACTION_NAMES[item.type] || `Type ${item.type}`
-                                            : typeof item.type === "string"
-                                              ? item.type.charAt(0).toUpperCase() + item.type.slice(1)
-                                              : `Type ${String(item.type)}`,
+                                    label: (() => {
+                                        // First try the mapping
+                                        const mappedName = INTERACTION_NAMES[item.type];
+                                        if (mappedName) return mappedName;
+
+                                        // If it's a numeric string, try mapping
+                                        if (typeof item.type === "string" && /^\d+$/.test(item.type)) {
+                                            return INTERACTION_NAMES[item.type] || `Type ${item.type}`;
+                                        }
+
+                                        // If it's already a proper string, just capitalize
+                                        if (typeof item.type === "string") {
+                                            return item.type.charAt(0).toUpperCase() + item.type.slice(1);
+                                        }
+
+                                        // Fallback
+                                        return `Type ${String(item.type)}`;
+                                    })(),
                                 }))}
                                 layout="horizontal"
                                 margin={{

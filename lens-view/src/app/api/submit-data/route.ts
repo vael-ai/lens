@@ -53,6 +53,15 @@ const citationSchema = z.object({
 });
 
 const reportSchema = z.object({
+    // Concise insights that users wouldn't know about themselves
+    keyInsights: z.array(
+        z.object({
+            insight: z.string(), // Short, impactful bullet point
+            impact: z.string(), // What this means for the user
+            dataSource: z.string(), // Brief explanation of what data revealed this
+            citation: citationSchema,
+        })
+    ),
     userProfileSummary: z.object({
         dailyActivityLevel: z.enum(["low", "moderate", "high"]),
         averageSessionDurationMinutes: z.number(),
@@ -137,14 +146,14 @@ const reportSchema = z.object({
             z.object({
                 domain: z.string(),
                 focusTimeMinutes: z.number(),
-                citation: citationSchema.optional(),
+                citation: citationSchema, // Make citation required
             })
         ),
         visitCountByCategory: z.array(
             z.object({
                 category: z.string(), // Allow flexible category names from AI
                 visitCount: z.number(),
-                citation: citationSchema.optional(),
+                citation: citationSchema, // Make citation required
             })
         ),
         sessionActivityOverTime: z.array(
@@ -152,14 +161,14 @@ const reportSchema = z.object({
                 date: z.string(),
                 sessions: z.number(),
                 averageSessionDuration: z.number(),
-                citation: citationSchema.optional(),
+                citation: citationSchema, // Make citation required
             })
         ),
         interactionTypeBreakdown: z.array(
             z.object({
                 type: z.string(), // Allow flexible interaction type names from AI
                 count: z.number(),
-                citation: citationSchema.optional(),
+                citation: citationSchema, // Make citation required
             })
         ),
         scrollDepthOverTime: z
@@ -346,34 +355,7 @@ async function processReportInBackground(reportId: string, email: string, userDa
         await updateProgress(35, "Analyzing domain patterns");
 
         // Send complete user data for full transparency - no optimization/scaling
-        const fullAnalysisData = {
-            dataProfile: {
-                originalSize: `${Math.round(rawDataSizeKB)}KB`,
-                totalDomains: Object.keys(websites).length,
-                dataTimespan:
-                    Object.keys(websites).length > 0
-                        ? {
-                              activeDays: Math.ceil(
-                                  (Date.now() -
-                                      Math.min(
-                                          ...Object.values(websites).map(
-                                              (data: any) => Number(data.firstVisit) || Date.now()
-                                          )
-                                      )) /
-                                      (1000 * 60 * 60 * 24)
-                              ),
-                              totalBrowsingTime: Math.round(
-                                  Object.values(websites).reduce(
-                                      (sum: number, data: any) => sum + (Number(data.totalFocusTime) || 0),
-                                      0
-                                  ) / 60000
-                              ), // Convert to minutes
-                          }
-                        : null,
-            },
-            // Send complete user data without any filtering or optimization
-            completeUserData: userData,
-        };
+        const fullAnalysisData = userData;
 
         // Stage 4: Processing user interactions (50%)
         await updateProgress(50, "Processing user interactions");
@@ -396,27 +378,38 @@ async function processReportInBackground(reportId: string, email: string, userDa
             prompt: `You are an expert digital behavior analyst creating comprehensive browsing behavior reports. Analyze the provided data to generate detailed insights and actionable recommendations.
 
 DATA PROFILE:
-- Dataset Size: ${fullAnalysisData.dataProfile.originalSize}
-- Total Domains: ${fullAnalysisData.dataProfile.totalDomains}
-- Active Days: ${fullAnalysisData.dataProfile.dataTimespan?.activeDays || "N/A"}
-- Total Browse Time: ${fullAnalysisData.dataProfile.dataTimespan?.totalBrowsingTime || "N/A"} minutes
+- Dataset Size: ${Math.round(rawDataSizeKB)}KB
+- Total Domains: ${Object.keys(websites).length}
+- Active Days: ${Object.keys(websites).length > 0 ? Math.ceil((Date.now() - Math.min(...Object.values(websites).map((data: any) => Number(data.firstVisit) || Date.now()))) / (1000 * 60 * 60 * 24)) : "N/A"}
+- Total Browse Time: ${Object.keys(websites).length > 0 ? Math.round(Object.values(websites).reduce((sum: number, data: any) => sum + (Number(data.totalFocusTime) || 0), 0) / 60000) : "N/A"} minutes
 
 ANALYSIS FRAMEWORK:
-1. USER BEHAVIOR PROFILING: Extract activity patterns, session characteristics, and browsing habits
-2. DOMAIN CATEGORIZATION: Classify websites by function with confidence scores
-3. INTERACTION PATTERNS: Analyze user engagement through clicks, scrolls, inputs, and navigation
-4. BEHAVIORAL INSIGHTS: Identify productivity patterns, content preferences, and digital habits
-5. VISUALIZATION DATA: Generate comprehensive chart data for interactive dashboards
+1. HIDDEN INSIGHTS EXTRACTION: Find 3-5 surprising patterns the user likely doesn't know about their browsing behavior
+2. USER BEHAVIOR PROFILING: Extract activity patterns, session characteristics, and browsing habits
+3. DOMAIN CATEGORIZATION: Classify websites by function with confidence scores
+4. INTERACTION PATTERNS: Analyze user engagement through clicks, scrolls, inputs, and navigation
+5. BEHAVIORAL INSIGHTS: Identify productivity patterns, content preferences, and digital habits
+6. VISUALIZATION DATA: Generate comprehensive chart data for interactive dashboards
+
+KEY INSIGHTS REQUIREMENTS:
+- Find patterns that would surprise the user (e.g., "You spend 40% more time on productivity sites when you have exactly 3 tabs open")
+- Identify behavioral correlations (e.g., "Your scrolling depth decreases by 30% after 15 minutes of browsing")
+- Highlight time-based patterns (e.g., "You switch tabs 2x more frequently in the afternoon than morning")
+- Show engagement patterns (e.g., "You click 3x more on weekend browsing sessions")
+- Each insight should be specific, data-driven, and actionable
+- **EACH INSIGHT MUST HAVE A COMPLETE CITATION** showing exactly what data supported this conclusion
 
 CRITICAL REQUIREMENTS FOR CHART DATA:
 - visitCountByCategory: MUST use descriptive category names like "Shopping", "Productivity", "News & Media", "Travel", "Entertainment", "Social Media", "Education", "Gaming" (NEVER use numbers like 0, 1, 2, 3, 4)
-- interactionTypeBreakdown: MUST use clear interaction names like "Click", "Scroll", "Hover", "Input", "Selection", "Navigation" (NEVER use numbers)
-- sessionActivityOverTime: CURRENT DATE IS ${new Date().toISOString()}. Use readable dates in YYYY-MM-DD format with the CORRECT CURRENT YEAR ${new Date().getFullYear()} and CURRENT MONTH ${new Date().getMonth() + 1}. Do not fabricate future dates.
+- interactionTypeBreakdown: MUST use clear interaction names like "Click", "Scroll", "Hover", "Input", "Selection", "Navigation" (NEVER use numbers or abbreviations)
+- sessionActivityOverTime: Use ACTUAL timestamps from the raw data. Extract visit dates from websites.*.firstVisit and websites.*.lastVisit timestamps. Convert timestamps to readable YYYY-MM-DD format. Do NOT generate synthetic dates. Group browsing sessions by actual dates when the user visited websites.
 - focusTimeByDomain: Use actual domain names from the data and convert totalFocusTime from milliseconds to minutes
 - ALL chart labels MUST be human-readable descriptive text, NEVER numeric indices or abbreviations
+- Use REAL timestamps from the raw browsing data, not synthetic dates
 
-CITATION REQUIREMENTS - CRITICAL - MUST INCLUDE FOR ACCOUNTABILITY:
-- For EVERY data point and insight, you MUST provide a citation in the appropriate format with these requirements:
+CITATION REQUIREMENTS - ABSOLUTELY CRITICAL - EVERY FIELD MUST HAVE CITATIONS:
+- For EVERY single data point, insight, and metric, you MUST provide a citation. NO EXCEPTIONS.
+- EVERY citation object must have ALL required fields filled out:
   * sourceId: Create a unique ID in the format "data-{domain or category}-{number}" (e.g., "data-amazon-1")
   * domainOrFeature: Specify the exact domain, feature, or data category this insight comes from
   * dataType: Specify the type of data (e.g., "interaction", "metadata", "browsing pattern")
@@ -440,6 +433,14 @@ DATA PATH EXAMPLES:
 - Visit frequency: "websites.{domain}.visitCount" with exact number
 - Domain classification: "websites.{domain}.inferredDomainClassification.primaryType" with classification
 - Browser patterns: "browserPatterns.averageDailyTabs" with exact tab count
+- Visit timestamps: "websites.{domain}.firstVisit" and "websites.{domain}.lastVisit" with exact timestamp values
+
+TIMESTAMP PROCESSING INSTRUCTIONS:
+- Extract firstVisit and lastVisit timestamps from each website entry
+- Convert timestamps (in milliseconds) to YYYY-MM-DD format for sessionActivityOverTime
+- Group website visits by date to calculate sessions per day
+- Use actual visit dates, not synthetic or current dates
+- Example: if websites.example.com.firstVisit = 1703980800000, convert to "2023-12-30"
 
 The goal is COMPLETE TRANSPARENCY - users must be able to see exactly what data supported each conclusion.
 
@@ -454,6 +455,19 @@ CALCULATION EXAMPLES FOR CITATIONS:
 - Average session duration: dataPath="browserPatterns.averageSessionDuration", rawDataValue=1800000, calculation="averageSessionDuration (1800000 ms) / 60000 = 30 minutes"
 - Focus time per domain: dataPath="websites.example.com.totalFocusTime", rawDataValue=120000, calculation="totalFocusTime (120000 ms) / 60000 = 2 minutes"
 - Average tabs: dataPath="browserPatterns.averageDailyTabs", rawDataValue=8, calculation="direct value from browserPatterns"
+
+EXAMPLE COMPLETE CITATION:
+{
+  "sourceId": "data-browser-patterns-1",
+  "domainOrFeature": "Browser Patterns",
+  "dataType": "session duration",
+  "confidence": 0.95,
+  "timeRangeStart": "2024-01-01",
+  "timeRangeEnd": "2024-01-07",
+  "dataPath": "browserPatterns.averageSessionDuration",
+  "rawDataValue": 1800000,
+  "calculation": "averageSessionDuration (1800000 ms) / 60000 = 30 minutes"
+}
 
 INTERACTION TYPE MAPPING (use these exact names):
 - click → "Click"
@@ -477,17 +491,23 @@ CATEGORY MAPPING (use these exact names):
 - finance → "Finance"
 - health → "Health & Fitness"
 
-REQUIREMENTS:
+CRITICAL REQUIREMENTS:
+- **CITATIONS ARE MANDATORY**: Every single data point MUST have a complete citation with sourceId, dataPath, and rawDataValue
+- **CITATION ARRAYS**: Every section must have AT LEAST 3 citations in their citations array (userProfileSummary.citations, interactionPatterns.citations, etc.)
+- **INDIVIDUAL CITATIONS**: Every chart data item must have its own citation object
+- **COMPLETE CITATION FIELDS**: Every citation must have sourceId, domainOrFeature, dataType, dataPath, and rawDataValue filled out
 - Provide nuanced insights based on actual usage patterns
 - Calculate meaningful engagement metrics and confidence scores
 - Generate rich chart data for all visualization types with proper descriptive labels
 - Identify actionable optimization opportunities
 - Consider temporal patterns and session behaviors
 - Ensure all chart data uses human-readable names, never numbers or indices
-- Include COMPLETE citations for every single data point and insight
+- **NO DATA WITHOUT CITATIONS**: If you cannot provide a citation for a data point, do not include that data point
 
-BROWSING DATA:
-${JSON.stringify(fullAnalysisData, null, 2)}`,
+RAW BROWSING DATA:
+${JSON.stringify(fullAnalysisData, null, 2)}
+
+**FINAL REMINDER**: EVERY SINGLE DATA POINT IN YOUR RESPONSE MUST HAVE A COMPLETE CITATION. Do not generate any metric, insight, or chart data without providing the exact source data path and raw value that supports it. The user needs to be able to trace every conclusion back to their actual browsing data.`,
             maxTokens: 32000, // Leverage 2.5's higher output limit
         });
 
@@ -543,6 +563,7 @@ ${JSON.stringify(fullAnalysisData, null, 2)}`,
                 "5": "Navigation",
                 "6": "Focus",
                 "7": "Typing",
+                "8": "Keypress",
                 click: "Click",
                 scroll: "Scroll",
                 hover: "Hover",
@@ -551,6 +572,16 @@ ${JSON.stringify(fullAnalysisData, null, 2)}`,
                 navigation: "Navigation",
                 focus: "Focus",
                 keypress: "Typing",
+                typing: "Typing",
+                // Additional fallbacks
+                "type 0": "Click",
+                "type 1": "Scroll",
+                "type 2": "Hover",
+                "type 3": "Input",
+                "type 4": "Selection",
+                "type 5": "Navigation",
+                "type 6": "Focus",
+                "type 7": "Typing",
             };
 
             // Fix category labels
@@ -571,11 +602,23 @@ ${JSON.stringify(fullAnalysisData, null, 2)}`,
             // Fix interaction type labels
             if (chartData.interactionTypeBreakdown) {
                 chartData.interactionTypeBreakdown = chartData.interactionTypeBreakdown.map((item: any) => {
-                    const mappedType =
-                        interactionMapping[item.type as keyof typeof interactionMapping] ??
-                        (typeof item.type === "string"
-                            ? item.type.charAt(0).toUpperCase() + item.type.slice(1)
-                            : item.type);
+                    let mappedType = interactionMapping[item.type as keyof typeof interactionMapping];
+
+                    // If no mapping found, try to clean up the type
+                    if (!mappedType) {
+                        if (typeof item.type === "string") {
+                            // Handle numeric strings
+                            if (/^\d+$/.test(item.type)) {
+                                mappedType = interactionMapping[item.type] || `Type ${item.type}`;
+                            } else {
+                                // Capitalize first letter for string types
+                                mappedType = item.type.charAt(0).toUpperCase() + item.type.slice(1);
+                            }
+                        } else {
+                            mappedType = `Type ${String(item.type)}`;
+                        }
+                    }
+
                     return {
                         ...item,
                         type: mappedType,

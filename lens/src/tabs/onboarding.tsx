@@ -56,14 +56,18 @@ const OnboardingPage = () => {
         body: JSON.stringify({ email })
       })
 
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ message: "Failed to save email. Please try again." }))
-        throw new Error(errorData.message || "Failed to save email.")
+      // Explicitly check for 200 status code
+      if (response.status !== 200) {
+        const errorData = await response.json().catch(() => ({
+          message: `Failed to save email. Server returned status ${response.status}. Please try again.`
+        }))
+        throw new Error(
+          errorData.message ||
+            `Failed to save email. Server returned status ${response.status}.`
+        )
       }
 
-      // Backend saved email, now save to local storage
+      // Only set onboarding complete if we received a 200 status code
       await storage.set(USER_EMAIL_KEY, email)
       await storage.set(ONBOARDING_COMPLETE_KEY, true)
 
@@ -78,6 +82,9 @@ const OnboardingPage = () => {
         setError("An unknown error occurred.")
       }
       console.error("Onboarding error:", err)
+
+      // Ensure ONBOARDING_COMPLETE_KEY is not set to true in case of any error
+      await storage.set(ONBOARDING_COMPLETE_KEY, false)
     } finally {
       setIsLoading(false)
     }

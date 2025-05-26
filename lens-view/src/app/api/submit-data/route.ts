@@ -924,13 +924,13 @@ export async function POST(request: NextRequest) {
                 const timeSinceLastReport = Date.now() - new Date(recentReport.completedAt).getTime();
                 const hoursSinceLastReport = timeSinceLastReport / (1000 * 60 * 60);
 
-                // Only apply similarity check if user is generating reports very frequently (< 1 hour)
-                // and data is extremely similar (>90%)
-                if (hoursSinceLastReport < 1 && similarity > 0.9) {
+                // Only block if user is generating reports extremely frequently (< 6 minutes)
+                // and data is nearly identical (>98%)
+                if (hoursSinceLastReport < 0.1 && similarity > 0.98) {
                     return NextResponse.json(
                         {
-                            error: "Please wait at least 1 hour between report generations when data is very similar.",
-                            minimumWaitTime: "1 hour",
+                            error: "You just generated a report with nearly identical data. Please wait at least 6 minutes before generating another report.",
+                            minimumWaitTime: "6 minutes",
                             currentDataSize: `${Math.round(dataSize / 1024)}KB`,
                             similarity: `${Math.round(similarity * 100)}%`,
                             tip: "Browse more websites to generate meaningful new insights, or wait a bit longer.",

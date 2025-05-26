@@ -284,10 +284,7 @@ function IndexPopup(): JSX.Element {
         exactExportSizeInBytes >= DATA_LIMITS.MIN_REPORT_SIZE_BYTES
 
       // Check if user can generate a new report (if data has grown by at least minimum threshold since last report)
-      const dataSizeGrowth = exactExportSizeInBytes - lastReportDataSize
-      const canGenerateNew =
-        lastReportDataSize === 0 ||
-        dataSizeGrowth >= DATA_LIMITS.MIN_REPORT_SIZE_BYTES
+      const canGenerateNew = reportIsReady
 
       setWebsiteCount(websiteCount)
       setDataSize(dataSizeFormatted)
@@ -500,91 +497,92 @@ function IndexPopup(): JSX.Element {
   }
 
   // New function to handle onboarding form submission
-  const handleOnboardingSubmit = () => {
+  const handleOnboardingSubmit = async () => {
     // Check if user has agreed to data collection terms
     if (!dataCollectionAgreed) {
       alert("Please agree to the data collection terms to continue.")
       return
     }
 
-    // IMPORTANT: Immediately update UI state - no async operations first
-    // Set email even with minimal validation
-    let emailToSave = onboardingEmailInput
-
-    // Just ensure there's something that looks email-like, very permissive check
+    // Validate email
+    const emailToSave = onboardingEmailInput
     if (!emailToSave || !emailToSave.includes("@")) {
-      emailToSave = "user@example.com" // Use a default if invalid
+      alert("Please enter a valid email address.")
+      return
     }
 
-    // CRITICAL: Update UI state first, synchronously, before any async operations
-    setUserEmail(emailToSave)
-    setShowOnboarding(false)
-    setHasEmail(true) // Set email status to true immediately
+    try {
+      // Send email to server and wait for response
+      const serverUrl = USE_LOCAL_API
+        ? "http://localhost:3000"
+        : "https://lens.vael.ai"
 
-    // Now handle storage and API operations separately, after UI has updated
-    setTimeout(() => {
-      // Save to local storage and enable master collection
-      try {
-        const storage = new Storage()
-        storage.set(USER_EMAIL_KEY, emailToSave)
-        storage.set(ONBOARDING_COMPLETE_KEY, true)
+      console.log(
+        `Sending email to ${USE_LOCAL_API ? "development" : "production"} server:`,
+        emailToSave,
+        `(${serverUrl})`
+      )
 
-        // Enable master collection now that email is provided
-        updateUserConfig({ masterCollectionEnabled: true })
-          .then((updatedConfig) => {
-            setConfig(updatedConfig)
-            console.log("Master collection enabled after email save")
-          })
-          .catch((configError) => {
-            console.error("Error enabling master collection:", configError)
-          })
-
-        // Also store in cookie for dev mode
-        if (USE_LOCAL_API) {
-          document.cookie = `userEmail=${emailToSave}; path=/;`
-        }
-
-        console.log("Email saved locally:", emailToSave)
-      } catch (storageError) {
-        console.error("Error saving to local storage:", storageError)
-        // Still continue, UI has already updated
-      }
-
-      // Always send email to server (development or production)
-      try {
-        const serverUrl = USE_LOCAL_API
-          ? "http://localhost:3000"
-          : "https://lens.vael.ai"
-        console.log(
-          `Sending email to ${USE_LOCAL_API ? "development" : "production"} server:`,
-          emailToSave,
-          `(${serverUrl})`
-        )
-
-        fetch(`${serverUrl}/api/save-email`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            email: emailToSave
-          })
+      const response = await fetch(`${serverUrl}/api/save-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          email: emailToSave
         })
-          .then((response) => response.json())
-          .then((result) => {
-            if (result.success) {
-              console.log("Email successfully saved to server:", result)
-            } else {
-              console.error("Server failed to save email:", result.error)
-            }
-          })
-          .catch((apiError) => {
-            console.error("API error saving email:", apiError)
-          })
-      } catch (apiError) {
-        console.error("Error preparing email API call:", apiError)
+      })
+
+      // Only proceed if we get a 200 status code
+      if (response.status !== 200) {
+        const errorData = await response.json().catch(() => ({
+          message: `Failed to save email. Server returned status ${response.status}.`
+        }))
+        alert(
+          errorData.message ||
+            `Failed to save email. Server returned status ${response.status}.`
+        )
+        return
       }
-    }, 0) // Schedule this for the next event loop
+
+      const result = await response.json()
+      if (!result.success) {
+        alert(result.error || "Failed to save email. Please try again.")
+        return
+      }
+
+      // Only update UI and storage after successful server response
+      console.log("Email successfully saved to server:", result)
+
+      // Save to local storage
+      const storage = new Storage()
+      await storage.set(USER_EMAIL_KEY, emailToSave)
+      await storage.set(ONBOARDING_COMPLETE_KEY, true)
+
+      // Enable master collection now that email is provided
+      const updatedConfig = await updateUserConfig({
+        masterCollectionEnabled: true
+      })
+      setConfig(updatedConfig)
+      console.log("Master collection enabled after email save")
+
+      // Also store in cookie for dev mode
+      if (USE_LOCAL_API) {
+        document.cookie = `userEmail=${emailToSave}; path=/;`
+      }
+
+      // Update UI state only after everything is successful
+      setUserEmail(emailToSave)
+      setShowOnboarding(false)
+      setHasEmail(true)
+    } catch (error) {
+      console.error("Error during onboarding:", error)
+      alert("An error occurred while saving your email. Please try again.")
+
+      // Ensure onboarding is not marked as complete on error
+      const storage = new Storage()
+      await storage.set(ONBOARDING_COMPLETE_KEY, false)
+    }
   }
 
   // New function to handle report generation
@@ -602,8 +600,8 @@ function IndexPopup(): JSX.Element {
       return
     }
 
-    // Recalculate exact export size to ensure accuracy
-    const exactExportSize = calculateExactExportSize(collectedData)
+    // Recalculate export size using compact format to match backend logic
+    const exactExportSize = JSON.stringify(collectedData).length
 
     // Use the new validation function
     const validation = validateDataForReport(exactExportSize)
@@ -612,16 +610,8 @@ function IndexPopup(): JSX.Element {
       return
     }
 
-    // Check if user can generate a new report
-    if (!canGenerateNewReport) {
-      const requiredGrowth = DataSizeUtils.formatBytes(
-        DATA_LIMITS.MIN_REPORT_SIZE_BYTES
-      )
-      alert(
-        `You need to collect at least ${requiredGrowth} more data since your last report to generate a new one.`
-      )
-      return
-    }
+    // We no longer check canGenerateNewReport here since we're only using isReportReady
+    // to determine if the user has enough data (>= 20KB)
 
     // Set loading state and disable button immediately
     setIsGeneratingReport(true)
@@ -701,14 +691,21 @@ function IndexPopup(): JSX.Element {
           alert(
             "Authentication failed. Please update the extension or contact support."
           )
-        } else if (result.error?.includes("Data hasn't changed enough")) {
-          alert(
-            `Not enough new data: ${result.error}\n\nCurrent: ${result.currentDataSize}\nPrevious: ${result.previousDataSize}\nSimilarity: ${result.similarity}`
-          )
+        } else if (result.error) {
+          // Show backend error details if present
+          let errorMsg = `Failed to submit data for report: ${result.error}`
+          if (result.minimumWaitTime)
+            errorMsg += `\nMinimum wait time: ${result.minimumWaitTime}`
+          if (result.currentDataSize)
+            errorMsg += `\nCurrent data size: ${result.currentDataSize}`
+          if (result.previousDataSize)
+            errorMsg += `\nPrevious data size: ${result.previousDataSize}`
+          if (result.similarity)
+            errorMsg += `\nSimilarity: ${result.similarity}`
+          if (result.tip) errorMsg += `\nTip: ${result.tip}`
+          alert(errorMsg)
         } else {
-          alert(
-            `Failed to submit data for report: ${result.error || "Unknown error"}`
-          )
+          alert(`Failed to submit data for report: Unknown error`)
         }
       }
     } catch (error) {
@@ -781,7 +778,7 @@ function IndexPopup(): JSX.Element {
                 console.log(
                   `Report ${report.reportId} is completed, showing notification`
                 )
-                await showReportCompletedNotification(report.reportId)
+                // await showReportCompletedNotification(report.reportId) // Function does not exist
 
                 // Add to checked list to avoid duplicate notifications
                 const updatedChecked = [...lastCheckedReports, report.reportId]
@@ -1362,10 +1359,8 @@ function IndexPopup(): JSX.Element {
                     onClick={handleGenerateReport}
                     className="w-full h-9 text-xs mb-2 font-medium bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 dark:from-purple-500 dark:to-indigo-500 dark:hover:from-purple-600 dark:hover:to-indigo-600 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-md text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     disabled={
-                      dataLoading ||
-                      !isReportReady ||
-                      isGeneratingReport ||
-                      !canGenerateNewReport
+                      dataLoading || !isReportReady || isGeneratingReport
+                      // Removed !canGenerateNewReport check since it's redundant with isReportReady
                     }>
                     {isGeneratingReport ? (
                       <span className="flex items-center">

@@ -396,21 +396,37 @@ function OptionsPage() {
     }
   }
 
+  // Calculate exact export size (matches exportCollectedData format)
+  const calculateExactExportSize = (data: CollectedData | null): number => {
+    if (!data) return 0
+    // Use the same formatting as exportCollectedData: JSON.stringify(data, null, 2)
+    const exactSize = JSON.stringify(data, null, 2).length
+    return exactSize
+  }
+
   // Count websites and calculate data size
   const getDataStats = () => {
     if (!collectedData) {
       return {
         websiteCount: 0,
         dataSize: "0 KB",
+        dataSizeInBytes: 0,
         lastUpdated: "Never"
       }
     }
 
-    const websiteCount = Object.keys(collectedData.websites).length
-    const dataSize = `~${Math.round(JSON.stringify(collectedData).length / 1024)} KB`
-    const lastUpdated = new Date(collectedData.lastUpdated).toLocaleString()
+    const websiteCount = Object.keys(collectedData.websites || {}).length
+    const exactExportSizeInBytes = calculateExactExportSize(collectedData)
+    const dataSizeFormatted = (exactExportSizeInBytes / 1024).toFixed(2) + " KB"
+    const lastUpdatedTimestamp = collectedData.lastUpdated || Date.now()
+    const lastUpdatedFormatted = new Date(lastUpdatedTimestamp).toLocaleString()
 
-    return { websiteCount, dataSize, lastUpdated }
+    return {
+      websiteCount,
+      dataSize: dataSizeFormatted,
+      dataSizeInBytes: exactExportSizeInBytes,
+      lastUpdated: lastUpdatedFormatted
+    }
   }
 
   // Get the most recently visited websites (limited to 15 for options page)

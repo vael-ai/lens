@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { ReportCharts } from "@/components/report-charts";
 import { SocialShare } from "@/components/social-share";
 import { CitationLink } from "@/components/citation-link";
-import { AlertCircle, Brain, Clock, Mouse, RefreshCw, TrendingUp, FileText } from "lucide-react";
+import { AlertCircle, Brain, Clock, Mouse, RefreshCw, TrendingUp, FileText, Copy, Check } from "lucide-react";
 import Link from "next/link";
 import { DataPoint } from "@/components/ui/data-point";
 import { EnhancedTooltip } from "@/components/ui/enhanced-tooltip";
@@ -64,11 +64,33 @@ interface Report {
             max: number;
             currency: string;
         };
+        shoppingBehavior?: {
+            preferredShoppingTimes: string[];
+            averageSessionDuration: number;
+            comparisonShoppingSites: string[];
+            mostViewedBrands: string[];
+        };
+        purchaseIntent?: {
+            highIntentCategories: string[];
+            researchPatterns: string;
+            priceMonitoringBehavior: string;
+        };
         citations: Citation[];
     };
     travelInsights?: {
         topDestinations: string[];
         preferredTransport?: string;
+        travelStyle?: {
+            budgetPreference: "budget" | "mid-range" | "luxury" | "mixed";
+            tripDuration: string;
+            seasonalPreferences: string[];
+            accommodationTypes: string[];
+        };
+        researchBehavior?: {
+            averageResearchDuration: number;
+            informationSources: string[];
+            comparisonPatterns: string;
+        };
         citations: Citation[];
     };
     inferredUserPersona:
@@ -132,9 +154,21 @@ export default function ReportPage() {
     const [status, setStatus] = useState<ReportStatus | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [copied, setCopied] = useState(false);
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const pollStartTime = useRef<number>(Date.now());
+
+    // Copy report ID to clipboard
+    const copyReportId = async () => {
+        try {
+            await navigator.clipboard.writeText(reportId);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error("Failed to copy:", err);
+        }
+    };
 
     // Poll for status updates and load completed reports
     useEffect(() => {
@@ -339,6 +373,17 @@ export default function ReportPage() {
             displayProgress = Math.max(progress, endProgress);
         }
 
+        // Additional encouraging messages based on progress and time
+        let additionalMessage = "";
+        if (displayProgress >= 90 && displayProgress < 99) {
+            additionalMessage = "This usually takes just a few more seconds...";
+        } else if (displayProgress >= 75 && displayProgress < 90 && !showEncouragingMessage) {
+            const elapsed = (Date.now() - pollStartTime.current) / 1000;
+            if (elapsed > 15) {
+                additionalMessage = "Almost there, hang on!";
+            }
+        }
+
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
                 {/* Header */}
@@ -358,11 +403,39 @@ export default function ReportPage() {
                                         Vael AI
                                     </Link>
                                 </p>
+
+                                {/* Report ID - Moved here and made copyable */}
+                                <div className="flex items-center mt-2 space-x-2">
+                                    <button
+                                        onClick={copyReportId}
+                                        className="inline-flex items-center px-2 py-1 text-xs transition-colors bg-gray-100 border border-gray-200 rounded font hover:bg-gray-200"
+                                        title="Click to copy report ID"
+                                    >
+                                        <span className="mr-1">Report ID:</span>
+                                        <span>{reportId}</span>
+                                        {copied ? (
+                                            <Check className="w-3 h-3 ml-1 text-green-600" />
+                                        ) : (
+                                            <Copy className="w-3 h-3 ml-1 text-gray-400" />
+                                        )}
+                                    </button>
+                                    {copied && <span className="text-xs text-green-600 animate-fade-in">Copied!</span>}
+                                </div>
+
+                                <div className="max-w-sm p-2 mt-2 border border-blue-200 rounded-lg bg-blue-50">
+                                    <p className="text-xs text-blue-700 sm:text-sm">
+                                        💡 <strong>Quick Tip:</strong> Hover over info icons for validity of your data
+                                    </p>
+                                </div>
+                                <div className="max-w-lg p-2 mt-3 border rounded-lg bg-amber-50 border-amber-200">
+                                    <p className="text-xs text-amber-800 sm:text-sm">
+                                        📊 <strong>Report Accuracy:</strong> The more time you spend browsing, the more
+                                        accurate your report becomes. Extended usage provides richer insights into your
+                                        digital behavior patterns.
+                                    </p>
+                                </div>
                             </div>
                             <div className="text-left sm:text-right">
-                                <Badge variant="outline" className="mb-2 text-xs">
-                                    Report ID: {reportId.slice(0, 8)}...
-                                </Badge>
                                 <p className="text-xs text-gray-500 sm:text-sm">Generated at</p>
                                 <p className="text-xs font-medium sm:text-sm">
                                     {status?.completedAt ? new Date(status.completedAt).toLocaleString() : "Recent"}
@@ -395,9 +468,9 @@ export default function ReportPage() {
                                     <p className="mb-4 text-gray-600">{stageDescription}</p>
                                     <Progress value={displayProgress} className="mb-2" />
                                     <p className="text-sm text-gray-500">{Math.round(displayProgress)}% complete</p>
-                                    {displayProgress >= 95 && (
+                                    {(displayProgress >= 95 || additionalMessage) && (
                                         <p className="mt-1 text-xs text-blue-600 animate-pulse">
-                                            This usually takes just a few more seconds...
+                                            {additionalMessage || "This usually takes just a few more seconds..."}
                                         </p>
                                     )}
                                 </div>
@@ -611,16 +684,39 @@ export default function ReportPage() {
                                     Vael AI
                                 </Link>
                             </p>
-                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+
+                            {/* Report ID - Moved here and made copyable */}
+                            <div className="flex items-center mt-2 space-x-2">
+                                <button
+                                    onClick={copyReportId}
+                                    className="inline-flex items-center px-2 py-1 font-mono text-xs transition-colors bg-gray-100 border border-gray-200 rounded hover:bg-gray-200"
+                                    title="Click to copy report ID"
+                                >
+                                    <span className="mr-1">ID:</span>
+                                    <span>{reportId}</span>
+                                    {copied ? (
+                                        <Check className="w-3 h-3 ml-1 text-green-600" />
+                                    ) : (
+                                        <Copy className="w-3 h-3 ml-1 text-gray-400" />
+                                    )}
+                                </button>
+                                {copied && <span className="text-xs text-green-600 animate-fade-in">Copied!</span>}
+                            </div>
+
+                            <div className="max-w-sm p-2 mt-2 border border-blue-200 rounded-lg bg-blue-50">
                                 <p className="text-xs text-blue-700 sm:text-sm">
                                     💡 <strong>Quick Tip:</strong> Hover over info icons for validity of your data
                                 </p>
                             </div>
+                            <div className="max-w-lg p-2 mt-3 border rounded-lg bg-amber-50 border-amber-200">
+                                <p className="text-xs text-amber-800 sm:text-sm">
+                                    📊 <strong>Report Accuracy:</strong> The more time you spend browsing, the more
+                                    accurate your report becomes. Extended usage provides richer insights into your
+                                    digital behavior patterns.
+                                </p>
+                            </div>
                         </div>
                         <div className="text-left sm:text-right">
-                            <Badge variant="outline" className="mb-2 text-xs">
-                                Report ID: {reportId.slice(0, 8)}...
-                            </Badge>
                             <p className="text-xs text-gray-500 sm:text-sm">Generated at</p>
                             <p className="text-xs font-medium sm:text-sm">
                                 {status?.completedAt ? new Date(status.completedAt).toLocaleString() : "Recent"}
@@ -642,6 +738,8 @@ export default function ReportPage() {
                                     title="AI-Powered Insights"
                                     content="These insights are generated by analyzing your browsing patterns with advanced AI to discover behaviors you might not be aware of."
                                     variant="trend"
+                                    side="right"
+                                    align="start"
                                 />
                             </CardTitle>
                             <p className="text-sm text-gray-600">
@@ -711,7 +809,7 @@ export default function ReportPage() {
                                 title="Digital Profile Analysis"
                                 content="This section analyzes your browsing behavior patterns to create a comprehensive digital personality profile."
                                 variant="help"
-                                side="bottom"
+                                side="right"
                                 align="start"
                             />
                         </CardTitle>
@@ -729,6 +827,8 @@ export default function ReportPage() {
                                         calculation={report.personaCitations?.[0]?.calculation}
                                         variant="data"
                                         className="ml-1"
+                                        side="bottom"
+                                        align="center"
                                     />
                                 </div>
                                 <h3 className="text-sm font-semibold capitalize sm:text-lg">
@@ -752,6 +852,8 @@ export default function ReportPage() {
                                         calculation={report.userProfileSummary.citations?.[0]?.calculation}
                                         variant="data"
                                         className="ml-1"
+                                        side="bottom"
+                                        align="center"
                                     />
                                 </div>
                                 <h3 className="text-sm font-semibold sm:text-base">Activity Level</h3>
@@ -785,279 +887,7 @@ export default function ReportPage() {
                     </CardContent>
                 </Card>
 
-                {/* Personalized Insights - Moved higher up in the report */}
-                {(report.ecommerceInsights || report.travelInsights) && (
-                    <Card className="mb-8 border-0 shadow-lg bg-gradient-to-br from-white to-purple-50">
-                        <CardHeader>
-                            <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
-                                <TrendingUp className="w-4 h-4 text-purple-600 sm:w-5 sm:h-5" />
-                                <span>Personalized Insights</span>
-                                <EnhancedTooltip
-                                    title="Category-Specific Analysis"
-                                    content="Deep-dive analysis based on your specific browsing patterns in identified categories like shopping, travel, etc."
-                                    variant="trend"
-                                />
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                                {report.ecommerceInsights && (
-                                    <div className="p-4 border border-orange-200 rounded-lg bg-gradient-to-br from-orange-50 to-red-50">
-                                        <div className="flex items-center mb-3">
-                                            <h4 className="flex items-center font-medium">
-                                                🛍️ Shopping Preferences
-                                                <EnhancedTooltip
-                                                    title="Shopping Analysis"
-                                                    content="Analysis of your shopping behavior including preferred categories and price ranges based on e-commerce site visits."
-                                                    dataSource={
-                                                        report.ecommerceInsights.citations?.[0]?.domainOrFeature
-                                                    }
-                                                    confidence={report.ecommerceInsights.citations?.[0]?.confidence}
-                                                    variant="data"
-                                                    className="ml-2"
-                                                />
-                                            </h4>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <div className="p-3 bg-white border border-orange-100 rounded">
-                                                <p className="text-sm">
-                                                    <strong className="text-orange-700">Top Categories:</strong>{" "}
-                                                    {report.ecommerceInsights.topCategories.map((category, idx) => (
-                                                        <span
-                                                            key={idx}
-                                                            className="inline-block px-2 py-1 mt-1 mr-1 text-xs text-orange-800 bg-orange-100 rounded"
-                                                        >
-                                                            {category}
-                                                        </span>
-                                                    ))}
-                                                </p>
-                                            </div>
-                                            {report.ecommerceInsights.averageViewedPriceRange && (
-                                                <div className="p-3 bg-white border border-orange-100 rounded">
-                                                    <p className="text-sm">
-                                                        <strong className="text-orange-700">Price Range:</strong>{" "}
-                                                        <span className="px-2 py-1 text-xs text-green-800 bg-green-100 rounded">
-                                                            {report.ecommerceInsights.averageViewedPriceRange.currency}
-                                                            {report.ecommerceInsights.averageViewedPriceRange.min} -
-                                                            {report.ecommerceInsights.averageViewedPriceRange.currency}
-                                                            {report.ecommerceInsights.averageViewedPriceRange.max}
-                                                        </span>
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {report.travelInsights && (
-                                    <div className="p-4 border border-blue-200 rounded-lg bg-gradient-to-br from-blue-50 to-cyan-50">
-                                        <div className="flex items-center mb-3">
-                                            <h4 className="flex items-center font-medium">
-                                                ✈️ Travel Interests
-                                                <EnhancedTooltip
-                                                    title="Travel Analysis"
-                                                    content="Analysis of your travel interests based on searches, destinations viewed, and transport preferences from travel-related websites."
-                                                    dataSource={report.travelInsights.citations?.[0]?.domainOrFeature}
-                                                    confidence={report.travelInsights.citations?.[0]?.confidence}
-                                                    variant="data"
-                                                    className="ml-2"
-                                                />
-                                            </h4>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <div className="p-3 bg-white border border-blue-100 rounded">
-                                                <p className="text-sm">
-                                                    <strong className="text-blue-700">Destinations:</strong>{" "}
-                                                    {report.travelInsights.topDestinations.map((destination, idx) => (
-                                                        <span
-                                                            key={idx}
-                                                            className="inline-block px-2 py-1 mt-1 mr-1 text-xs text-blue-800 bg-blue-100 rounded"
-                                                        >
-                                                            {destination}
-                                                        </span>
-                                                    ))}
-                                                </p>
-                                            </div>
-                                            {report.travelInsights.preferredTransport && (
-                                                <div className="p-3 bg-white border border-blue-100 rounded">
-                                                    <p className="text-sm">
-                                                        <strong className="text-blue-700">Transport:</strong>{" "}
-                                                        <span className="px-2 py-1 text-xs rounded bg-cyan-100 text-cyan-800">
-                                                            {report.travelInsights.preferredTransport}
-                                                        </span>
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Top Websites */}
-                <Card className="mb-8 border-0 shadow-lg bg-gradient-to-br from-white to-gray-50">
-                    <CardHeader>
-                        <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
-                            <TrendingUp className="w-4 h-4 text-green-600 sm:w-5 sm:h-5" />
-                            <span>Top Websites</span>
-                            <EnhancedTooltip
-                                title="Website Analysis"
-                                content="Your most visited websites ranked by engagement time and interaction frequency. Categories are automatically inferred using AI."
-                                dataSource={report.topWebsites?.[0]?.citation?.domainOrFeature}
-                                confidence={report.topWebsites?.[0]?.citation?.confidence}
-                                variant="data"
-                            />
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 sm:p-6">
-                        <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {report.topWebsites.slice(0, 6).map((website, index) => (
-                                <div
-                                    key={index}
-                                    className="p-4 transition-all duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md"
-                                >
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center flex-1 min-w-0">
-                                            <h4 className="mr-2 text-sm font-medium truncate sm:text-base">
-                                                {website.domain}
-                                            </h4>
-                                            <EnhancedTooltip
-                                                title={`Raw Data: ${website.domain}`}
-                                                content={
-                                                    <div className="space-y-3">
-                                                        <div className="text-xs">
-                                                            <strong className="text-blue-600">Data Source Path:</strong>
-                                                            <div className="p-2 mt-1 border border-blue-200 rounded bg-blue-50">
-                                                                <code className="font-mono text-xs">
-                                                                    websites["{website.domain}"]
-                                                                </code>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="text-xs">
-                                                            <strong className="text-green-600">Raw Values:</strong>
-                                                            <div className="p-2 mt-1 overflow-auto border border-green-200 rounded bg-green-50 max-h-32">
-                                                                <code className="font-mono text-xs">
-                                                                    {JSON.stringify(
-                                                                        {
-                                                                            visitCount: website.visitCount,
-                                                                            totalFocusTime:
-                                                                                website.totalFocusTimeMinutes *
-                                                                                60 *
-                                                                                1000,
-                                                                            domain: website.domain,
-                                                                            inferredDomainClassification: {
-                                                                                primaryType: website.inferredCategory,
-                                                                                confidence: website.confidence,
-                                                                            },
-                                                                        },
-                                                                        null,
-                                                                        2
-                                                                    )}
-                                                                </code>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="p-2 text-xs text-purple-600 border rounded bg-purple-50">
-                                                            <strong>AI Analysis:</strong> Classified as "
-                                                            {website.inferredCategory}" with{" "}
-                                                            {Math.round(website.confidence * 100)}% confidence based on
-                                                            domain patterns and usage behavior.
-                                                        </div>
-                                                    </div>
-                                                }
-                                                dataSource={`Raw browsing data for ${website.domain}`}
-                                                confidence={website.confidence}
-                                                calculation={`Category inferred from domain analysis and visit patterns`}
-                                                variant="data"
-                                                className="flex-shrink-0"
-                                                side="left"
-                                                align="start"
-                                            />
-                                        </div>
-                                        <Badge
-                                            variant="secondary"
-                                            className={`text-xs ml-2 ${
-                                                website.confidence > 0.8
-                                                    ? "bg-green-100 text-green-800"
-                                                    : website.confidence > 0.6
-                                                      ? "bg-yellow-100 text-yellow-800"
-                                                      : "bg-red-100 text-red-800"
-                                            }`}
-                                        >
-                                            {website.inferredCategory}
-                                        </Badge>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 sm:text-sm">
-                                        <DataPoint
-                                            value={website.visitCount}
-                                            label="Visits"
-                                            variant="small"
-                                            className="p-2 rounded bg-blue-50"
-                                            rawDataPath={`websites["${website.domain}"].visitCount`}
-                                            rawDataValue={website.visitCount}
-                                            description={`Number of times you visited ${website.domain}`}
-                                        />
-                                        <DataPoint
-                                            value={Math.round(website.totalFocusTimeMinutes)}
-                                            unit="min"
-                                            label="Focus Time"
-                                            variant="small"
-                                            className="p-2 rounded bg-green-50"
-                                            rawDataPath={`websites["${website.domain}"].totalFocusTime`}
-                                            rawDataValue={website.totalFocusTimeMinutes * 60 * 1000} // Convert to milliseconds as stored
-                                            description={`Total time spent actively browsing ${website.domain}`}
-                                        />
-                                    </div>
-                                    <div className="flex items-center mt-2">
-                                        <div className="flex-1 h-2 bg-gray-200 rounded-full">
-                                            <div
-                                                className={`h-2 rounded-full transition-all duration-300 ${
-                                                    website.confidence > 0.8
-                                                        ? "bg-green-500"
-                                                        : website.confidence > 0.6
-                                                          ? "bg-yellow-500"
-                                                          : "bg-red-500"
-                                                }`}
-                                                style={{ width: `${website.confidence * 100}%` }}
-                                            ></div>
-                                        </div>
-                                        <span className="ml-2 text-xs text-gray-500">
-                                            {Math.round(website.confidence * 100)}%
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Charts */}
-                <div className="mb-8">
-                    <div className="p-4 mb-4 border border-gray-200 rounded-lg bg-gradient-to-r from-gray-50 to-blue-50">
-                        <h2 className="flex items-center text-xl font-semibold">
-                            <FileText className="w-5 h-5 mr-2 text-blue-600" />
-                            Data Visualizations
-                            <EnhancedTooltip
-                                title="Interactive Charts"
-                                content="These charts provide visual representations of your browsing data. Hover over data points to see detailed information including data sources and confidence levels."
-                                dataSource={report.chartData.citations?.[0]?.domainOrFeature}
-                                confidence={report.chartData.citations?.[0]?.confidence}
-                                variant="trend"
-                                className="ml-2"
-                            />
-                        </h2>
-                        <p className="mt-1 text-sm text-gray-600">
-                            Interactive charts showing your browsing patterns and trends. All data points include source
-                            citations.
-                        </p>
-                    </div>
-                    <ReportCharts data={report.chartData} />
-                </div>
-
-                {/* Behavioral Evolution Analysis */}
+                {/* Behavioral Evolution Analysis - Moved up for better visibility */}
                 {comparisonInsights && (
                     <Card className="mb-4 sm:mb-6 lg:mb-8">
                         <CardHeader className="pb-3 sm:pb-6">
@@ -1226,19 +1056,351 @@ export default function ReportPage() {
                     </Card>
                 )}
 
+                {/* Personalized Insights - Moved higher up in the report */}
+                {(report.ecommerceInsights || report.travelInsights) && (
+                    <Card className="mb-8 border-0 shadow-lg bg-gradient-to-br from-white to-purple-50">
+                        <CardHeader>
+                            <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+                                <TrendingUp className="w-4 h-4 text-purple-600 sm:w-5 sm:h-5" />
+                                <span>Personalized Insights</span>
+                                <EnhancedTooltip
+                                    title="Category-Specific Analysis"
+                                    content="Deep-dive analysis based on your specific browsing patterns in identified categories like shopping, travel, etc."
+                                    variant="trend"
+                                    side="right"
+                                    align="start"
+                                />
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 gap-6">
+                                {report.ecommerceInsights && (
+                                    <div className="p-4 border border-orange-200 rounded-lg bg-gradient-to-br from-orange-50 to-red-50">
+                                        <div className="flex items-center mb-3">
+                                            <h4 className="flex items-center font-medium">
+                                                🛍️ Shopping Preferences
+                                                <EnhancedTooltip
+                                                    title="Shopping Analysis"
+                                                    content="Analysis of your shopping behavior including preferred categories and price ranges based on e-commerce site visits."
+                                                    dataSource={
+                                                        report.ecommerceInsights.citations?.[0]?.domainOrFeature
+                                                    }
+                                                    confidence={report.ecommerceInsights.citations?.[0]?.confidence}
+                                                    variant="data"
+                                                    className="ml-2"
+                                                />
+                                            </h4>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <div className="p-3 bg-white border border-orange-100 rounded">
+                                                <p className="text-sm">
+                                                    <strong className="text-orange-700">Top Categories:</strong>{" "}
+                                                    {report.ecommerceInsights.topCategories.map((category, idx) => (
+                                                        <span
+                                                            key={idx}
+                                                            className="inline-block px-2 py-1 mt-1 mr-1 text-xs text-orange-800 bg-orange-100 rounded"
+                                                        >
+                                                            {category}
+                                                        </span>
+                                                    ))}
+                                                </p>
+                                            </div>
+                                            {report.ecommerceInsights.averageViewedPriceRange && (
+                                                <div className="p-3 bg-white border border-orange-100 rounded">
+                                                    <p className="text-sm">
+                                                        <strong className="text-orange-700">Price Range:</strong>{" "}
+                                                        <span className="px-2 py-1 text-xs text-green-800 bg-green-100 rounded">
+                                                            {report.ecommerceInsights.averageViewedPriceRange.currency}
+                                                            {report.ecommerceInsights.averageViewedPriceRange.min} -
+                                                            {report.ecommerceInsights.averageViewedPriceRange.currency}
+                                                            {report.ecommerceInsights.averageViewedPriceRange.max}
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {report.ecommerceInsights.shoppingBehavior && (
+                                                <div className="p-3 bg-white border border-orange-100 rounded">
+                                                    <p className="text-sm">
+                                                        <strong className="text-orange-700">Shopping Times:</strong>{" "}
+                                                        {report.ecommerceInsights.shoppingBehavior.preferredShoppingTimes.join(
+                                                            ", "
+                                                        )}
+                                                    </p>
+                                                    {report.ecommerceInsights.shoppingBehavior.mostViewedBrands.length >
+                                                        0 && (
+                                                        <p className="mt-1 text-sm">
+                                                            <strong className="text-orange-700">Brands:</strong>{" "}
+                                                            {report.ecommerceInsights.shoppingBehavior.mostViewedBrands
+                                                                .slice(0, 3)
+                                                                .join(", ")}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {report.ecommerceInsights.purchaseIntent && (
+                                                <div className="p-3 bg-white border border-orange-100 rounded">
+                                                    <p className="text-sm">
+                                                        <strong className="text-orange-700">Research Pattern:</strong>{" "}
+                                                        {report.ecommerceInsights.purchaseIntent.researchPatterns}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {report.travelInsights && (
+                                    <div className="p-4 border border-blue-200 rounded-lg bg-gradient-to-br from-blue-50 to-cyan-50">
+                                        <div className="flex items-center mb-3">
+                                            <h4 className="flex items-center font-medium">
+                                                ✈️ Travel Interests
+                                                <EnhancedTooltip
+                                                    title="Travel Analysis"
+                                                    content="Analysis of your travel interests based on searches, destinations viewed, and transport preferences from travel-related websites."
+                                                    dataSource={report.travelInsights.citations?.[0]?.domainOrFeature}
+                                                    confidence={report.travelInsights.citations?.[0]?.confidence}
+                                                    variant="data"
+                                                    className="ml-2"
+                                                />
+                                            </h4>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <div className="p-3 bg-white border border-blue-100 rounded">
+                                                <p className="text-sm">
+                                                    <strong className="text-blue-700">Destinations:</strong>{" "}
+                                                    {report.travelInsights.topDestinations.map((destination, idx) => (
+                                                        <span
+                                                            key={idx}
+                                                            className="inline-block px-2 py-1 mt-1 mr-1 text-xs text-blue-800 bg-blue-100 rounded"
+                                                        >
+                                                            {destination}
+                                                        </span>
+                                                    ))}
+                                                </p>
+                                            </div>
+                                            {report.travelInsights.preferredTransport && (
+                                                <div className="p-3 bg-white border border-blue-100 rounded">
+                                                    <p className="text-sm">
+                                                        <strong className="text-blue-700">Transport:</strong>{" "}
+                                                        <span className="px-2 py-1 text-xs rounded bg-cyan-100 text-cyan-800">
+                                                            {report.travelInsights.preferredTransport}
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {report.travelInsights.travelStyle && (
+                                                <div className="p-3 bg-white border border-blue-100 rounded">
+                                                    <p className="text-sm">
+                                                        <strong className="text-blue-700">Travel Style:</strong>{" "}
+                                                        <span className="px-2 py-1 text-xs text-blue-800 capitalize bg-blue-100 rounded">
+                                                            {report.travelInsights.travelStyle.budgetPreference}
+                                                        </span>
+                                                        {report.travelInsights.travelStyle.seasonalPreferences.length >
+                                                            0 && (
+                                                            <span className="ml-2 text-xs text-blue-700">
+                                                                •{" "}
+                                                                {report.travelInsights.travelStyle.seasonalPreferences.join(
+                                                                    ", "
+                                                                )}
+                                                            </span>
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {report.travelInsights.researchBehavior && (
+                                                <div className="p-3 bg-white border border-blue-100 rounded">
+                                                    <p className="text-sm">
+                                                        <strong className="text-blue-700">Research Pattern:</strong>{" "}
+                                                        {report.travelInsights.researchBehavior.comparisonPatterns}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Top Websites */}
+                <Card className="mb-8 border-0 shadow-lg bg-gradient-to-br from-white to-gray-50">
+                    <CardHeader>
+                        <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+                            <TrendingUp className="w-4 h-4 text-green-600 sm:w-5 sm:h-5" />
+                            <span>Top Websites</span>
+                            <EnhancedTooltip
+                                title="Website Analysis"
+                                content="Your most visited websites ranked by engagement time and interaction frequency. Categories are automatically inferred using AI."
+                                dataSource={report.topWebsites?.[0]?.citation?.domainOrFeature}
+                                confidence={report.topWebsites?.[0]?.citation?.confidence}
+                                variant="data"
+                                side="right"
+                                align="start"
+                            />
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 sm:p-6">
+                        <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {report.topWebsites.slice(0, 6).map((website, index) => (
+                                <div
+                                    key={index}
+                                    className="p-4 transition-all duration-200 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md"
+                                >
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center flex-1 min-w-0">
+                                            <h4 className="mr-2 text-sm font-medium truncate sm:text-base">
+                                                {website.domain}
+                                            </h4>
+                                            <EnhancedTooltip
+                                                title={`Raw Data: ${website.domain}`}
+                                                content={
+                                                    <div className="space-y-3">
+                                                        <div className="text-xs">
+                                                            <strong className="text-blue-600">Data Source Path:</strong>
+                                                            <div className="p-2 mt-1 border border-blue-200 rounded bg-blue-50">
+                                                                <code className="font-mono text-xs">
+                                                                    websites["{website.domain}"]
+                                                                </code>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="text-xs">
+                                                            <strong className="text-green-600">Raw Values:</strong>
+                                                            <div className="p-2 mt-1 overflow-auto border border-green-200 rounded bg-green-50 max-h-32">
+                                                                <code className="font-mono text-xs">
+                                                                    {JSON.stringify(
+                                                                        {
+                                                                            visitCount: website.visitCount,
+                                                                            totalFocusTime:
+                                                                                website.totalFocusTimeMinutes *
+                                                                                60 *
+                                                                                1000,
+                                                                            domain: website.domain,
+                                                                            inferredDomainClassification: {
+                                                                                primaryType: website.inferredCategory,
+                                                                                confidence: website.confidence,
+                                                                            },
+                                                                        },
+                                                                        null,
+                                                                        2
+                                                                    )}
+                                                                </code>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="p-2 text-xs text-purple-600 border rounded bg-purple-50">
+                                                            <strong>AI Analysis:</strong> Classified as "
+                                                            {website.inferredCategory}" with{" "}
+                                                            {Math.round(website.confidence * 100)}% confidence based on
+                                                            domain patterns and usage behavior.
+                                                        </div>
+                                                    </div>
+                                                }
+                                                dataSource={`Raw browsing data for ${website.domain}`}
+                                                confidence={website.confidence}
+                                                calculation={`Category inferred from domain analysis and visit patterns`}
+                                                variant="data"
+                                                className="flex-shrink-0"
+                                                side="left"
+                                                align="center"
+                                            />
+                                        </div>
+                                        <Badge
+                                            variant="secondary"
+                                            className={`text-xs ml-2 ${
+                                                website.confidence > 0.8
+                                                    ? "bg-green-100 text-green-800"
+                                                    : website.confidence > 0.6
+                                                      ? "bg-yellow-100 text-yellow-800"
+                                                      : "bg-red-100 text-red-800"
+                                            }`}
+                                        >
+                                            {website.inferredCategory}
+                                        </Badge>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 sm:text-sm">
+                                        <DataPoint
+                                            value={website.visitCount}
+                                            label="Visits"
+                                            variant="small"
+                                            className="p-2 rounded bg-blue-50"
+                                            rawDataPath={`websites["${website.domain}"].visitCount`}
+                                            rawDataValue={website.visitCount}
+                                            description={`Number of times you visited ${website.domain}`}
+                                        />
+                                        <DataPoint
+                                            value={Math.round(website.totalFocusTimeMinutes)}
+                                            unit="min"
+                                            label="Focus Time"
+                                            variant="small"
+                                            className="p-2 rounded bg-green-50"
+                                            rawDataPath={`websites["${website.domain}"].totalFocusTime`}
+                                            rawDataValue={website.totalFocusTimeMinutes * 60 * 1000} // Convert to milliseconds as stored
+                                            description={`Total time spent actively browsing ${website.domain}`}
+                                        />
+                                    </div>
+                                    <div className="flex items-center mt-2">
+                                        <div className="flex-1 h-2 bg-gray-200 rounded-full">
+                                            <div
+                                                className={`h-2 rounded-full transition-all duration-300 ${
+                                                    website.confidence > 0.8
+                                                        ? "bg-green-500"
+                                                        : website.confidence > 0.6
+                                                          ? "bg-yellow-500"
+                                                          : "bg-red-500"
+                                                }`}
+                                                style={{ width: `${website.confidence * 100}%` }}
+                                            ></div>
+                                        </div>
+                                        <span className="ml-2 text-xs text-gray-500">
+                                            {Math.round(website.confidence * 100)}%
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Charts */}
+                <div className="mb-8">
+                    <div className="p-4 mb-4 border border-gray-200 rounded-lg bg-gradient-to-r from-gray-50 to-blue-50">
+                        <h2 className="flex items-center text-xl font-semibold">
+                            <FileText className="w-5 h-5 mr-2 text-blue-600" />
+                            Data Visualizations
+                            <EnhancedTooltip
+                                title="Interactive Charts"
+                                content="These charts provide visual representations of your browsing data. Hover over data points to see detailed information including data sources and confidence levels."
+                                dataSource={report.chartData.citations?.[0]?.domainOrFeature}
+                                confidence={report.chartData.citations?.[0]?.confidence}
+                                variant="trend"
+                                className="ml-2"
+                                side="right"
+                                align="start"
+                            />
+                        </h2>
+                        <p className="mt-1 text-sm text-gray-600">
+                            Interactive charts showing your browsing patterns and trends. All data points include source
+                            citations.
+                        </p>
+                    </div>
+                    <ReportCharts data={report.chartData} />
+                </div>
+
                 {/* Interaction Patterns */}
                 <Card className="mb-8 border-0 shadow-lg bg-gradient-to-br from-white to-indigo-50">
                     <CardHeader>
                         <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
                             <Mouse className="w-4 h-4 text-indigo-600 sm:w-5 sm:h-5" />
-                            <span>Interaction Patterns</span>
+                            <span>User Interaction Analysis</span>
                             <EnhancedTooltip
                                 title="Interaction Analysis"
                                 content="Analysis of how you interact with websites including clicks, scrolls, and input patterns. This reveals your browsing behavior and engagement style."
                                 dataSource={report.interactionPatterns.citations?.[0]?.domainOrFeature}
                                 confidence={report.interactionPatterns.citations?.[0]?.confidence}
                                 variant="data"
-                                side="bottom"
+                                side="right"
                                 align="start"
                             />
                         </CardTitle>
@@ -1274,7 +1436,8 @@ export default function ReportPage() {
                                 />
                             )}
 
-                            {report.interactionPatterns.averageInputFocusTimeMs && (
+                            {report.interactionPatterns.averageInputFocusTimeMs &&
+                            report.interactionPatterns.averageInputFocusTimeMs > 0 ? (
                                 <DataPoint
                                     value={Math.round(report.interactionPatterns.averageInputFocusTimeMs / 1000)}
                                     unit="s"
@@ -1286,6 +1449,16 @@ export default function ReportPage() {
                                     rawDataPath="websites.*.interactions.input.averageDuration"
                                     rawDataValue={report.interactionPatterns.averageInputFocusTimeMs}
                                 />
+                            ) : (
+                                <div className="p-4 border border-gray-200 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100">
+                                    <div className="text-center">
+                                        <div className="mb-1 text-2xl font-bold text-gray-400">N/A</div>
+                                        <div className="mb-1 text-sm font-medium text-gray-600">Input Focus Time</div>
+                                        <div className="text-xs text-gray-500">
+                                            No significant input activity detected
+                                        </div>
+                                    </div>
+                                </div>
                             )}
                         </div>
                     </CardContent>

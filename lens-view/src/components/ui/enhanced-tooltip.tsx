@@ -35,10 +35,12 @@ export function EnhancedTooltip({
         if (typeof window === "undefined") return side;
 
         const screenWidth = window.innerWidth;
-        const isMobile = screenWidth < 640;
+        const isMobile = screenWidth < 768;
+        const isTablet = screenWidth >= 768 && screenWidth < 1024;
 
-        // On mobile, prefer bottom to avoid top cutoff
-        if (isMobile && side === "top") return "bottom";
+        // On mobile and tablet, prefer bottom to avoid top cutoff
+        if (isMobile && (side === "top" || side === "left" || side === "right")) return "bottom";
+        if (isTablet && side === "top") return "bottom";
 
         return side;
     };
@@ -47,9 +49,9 @@ export function EnhancedTooltip({
         if (typeof window === "undefined") return align;
 
         const screenWidth = window.innerWidth;
-        const isMobile = screenWidth < 640;
+        const isMobile = screenWidth < 768;
 
-        // On mobile, prefer center alignment
+        // On mobile, prefer center alignment for better positioning
         if (isMobile) return "center";
 
         return align;
@@ -100,8 +102,11 @@ export function EnhancedTooltip({
                     side={getOptimalSide()}
                     align={getOptimalAlign()}
                     className="max-w-xs sm:max-w-sm z-50 max-h-80 overflow-auto touch-pan-y"
-                    sideOffset={8}
+                    sideOffset={1}
                     alignOffset={0}
+                    avoidCollisions={true}
+                    sticky="always"
+                    collisionPadding={4}
                 >
                     <div className="space-y-2">
                         <div className="font-medium text-gray-900 border-b border-gray-200 pb-1">{title}</div>

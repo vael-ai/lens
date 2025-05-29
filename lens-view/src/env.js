@@ -11,7 +11,7 @@ export const env = createEnv({
         MONGODB_URI: z.string().min(1),
         GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1),
         INTERNAL_JWT_SECRET: z.string().min(32),
-        USE_LOCAL_API: z.boolean().optional().default(false),
+        USE_LOCAL_API: z.string().optional().default("false"),
     },
 
     /**

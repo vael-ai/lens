@@ -86,12 +86,42 @@ const reportSchema = z.object({
                     currency: z.string(),
                 })
                 .optional(),
+            shoppingBehavior: z
+                .object({
+                    preferredShoppingTimes: z.array(z.string()),
+                    averageSessionDuration: z.number(),
+                    comparisonShoppingSites: z.array(z.string()),
+                    mostViewedBrands: z.array(z.string()),
+                })
+                .optional(),
+            purchaseIntent: z
+                .object({
+                    highIntentCategories: z.array(z.string()),
+                    researchPatterns: z.string(),
+                    priceMonitoringBehavior: z.string(),
+                })
+                .optional(),
         })
         .optional(),
     travelInsights: z
         .object({
             topDestinations: z.array(z.string()),
             preferredTransport: z.string().optional(),
+            travelStyle: z
+                .object({
+                    budgetPreference: z.enum(["budget", "mid-range", "luxury", "mixed"]),
+                    tripDuration: z.string(),
+                    seasonalPreferences: z.array(z.string()),
+                    accommodationTypes: z.array(z.string()),
+                })
+                .optional(),
+            researchBehavior: z
+                .object({
+                    averageResearchDuration: z.number(),
+                    informationSources: z.array(z.string()),
+                    comparisonPatterns: z.string(),
+                })
+                .optional(),
         })
         .optional(),
     inferredUserPersona: z.enum([
@@ -405,54 +435,7 @@ async function processReportInBackground(reportId: string, email: string, userDa
         const { object: report } = await generateObject({
             model,
             schema: reportSchema,
-            prompt: `You are a world-class digital behavior psychologist and data scientist specializing in uncovering hidden patterns in human browsing behavior. Your mission is to analyze browsing data like a detective, revealing insights that will genuinely surprise and enlighten users about their own digital habits and psychological patterns.
-
-🧠 PSYCHOLOGICAL ANALYSIS OBJECTIVES:
-1. REVEAL HIDDEN BEHAVIORAL PATTERNS: Uncover subconscious habits, timing patterns, and decision-making processes
-2. PERSONALITY INSIGHTS: Infer cognitive styles, decision-making preferences, and information processing patterns
-3. EMOTIONAL DIGITAL FOOTPRINTS: Identify stress patterns, mood-related browsing, and emotional triggers in online behavior
-4. PRODUCTIVITY PSYCHOLOGY: Analyze focus patterns, multitasking efficiency, and cognitive load indicators
-5. UNCONSCIOUS PREFERENCES: Discover patterns the user likely isn't aware of in their content consumption
-
-🔍 DEEP INSIGHT FRAMEWORK - DISCOVER WHAT USERS DON'T KNOW ABOUT THEMSELVES:
-
-**Temporal Psychology Patterns:**
-- What time of day are they most focused vs. scattered?
-- Do they have "rabbit hole" browsing sessions where they get deeply absorbed?
-- Are there patterns in how they switch between work and leisure content?
-- Do they exhibit "decision fatigue" patterns in their clicking behavior?
-
-**Cognitive Style Analysis:**
-- Are they a "searcher" (goal-oriented) or "browser" (exploratory)?
-- Do they prefer depth (long sessions on few sites) or breadth (quick visits to many sites)?
-- How do they handle information overload? Do they bookmark or revisit?
-- Are they impulsive clickers or deliberate navigators?
-
-**Hidden Content Preferences:**
-- What topics do they gravitate toward when stressed vs. relaxed?
-- Are there seasonal or weekly patterns in their interests?
-- Do they have "guilty pleasure" browsing categories they spend more time on than they realize?
-- What types of content do they engage with most deeply (scroll depth, time spent)?
-
-**Social Digital Behavior:**
-- How much of their browsing is social vs. solitary learning?
-- Do they follow trends or set them (early adoption patterns)?
-- Are they comparison-driven or content with their own choices?
-
-**Productivity Personality:**
-- Are they a "task switcher" or "deep worker"?
-- Do they use the internet as a tool or entertainment primarily?
-- What are their distraction triggers and focus enhancers?
-- Do they exhibit procrastination patterns in their browsing?
-
-🎯 GENERATE INSIGHTS THAT MAKE USERS SAY "I HAD NO IDEA I DID THAT!"
-
-Examples of surprising insights to discover:
-- "You spend 40% more time on creative content when it's raining (based on timestamp patterns)"
-- "Your browsing becomes 60% more goal-oriented after 2 PM, suggesting you're a natural afternoon decision-maker"
-- "You have a hidden pattern of researching topics 3-5 days before making purchasing decisions"
-- "Your scroll depth increases by 80% on educational content compared to news, indicating you prefer deep learning over surface-level information"
-- "You exhibit 'research spirals' where one technical topic leads to 3+ hours of related deep-diving"
+            prompt: `You are a world-class digital behavior psychologist specializing in uncovering hidden patterns in browsing behavior. Analyze this data to reveal insights that will genuinely surprise users about their own digital habits.
 
 DATA PROFILE:
 - Dataset Size: ${optimizedAnalysisData.dataProfile.originalSize}
@@ -460,56 +443,34 @@ DATA PROFILE:
 - Active Days: ${optimizedAnalysisData.dataProfile.dataTimespan?.activeDays || "N/A"}
 - Total Browse Time: ${optimizedAnalysisData.dataProfile.dataTimespan?.totalBrowsingTime || "N/A"} minutes
 
-🔍 ANALYSIS INSTRUCTIONS - THINK LIKE A DIGITAL PSYCHOLOGIST:
+ANALYSIS OBJECTIVES - THINK LIKE A DIGITAL PSYCHOLOGIST:
+1. BEHAVIORAL PATTERNS: Uncover subconscious habits and timing patterns
+2. PERSONALITY INSIGHTS: Infer cognitive styles and decision-making preferences
+3. PRODUCTIVITY PSYCHOLOGY: Analyze focus patterns and cognitive load indicators
+4. SURPRISE INSIGHTS: Discover patterns users likely aren't aware of
 
-1. **BEHAVIORAL ARCHAEOLOGY**: Dig deep into timing patterns, session flows, and interaction sequences to uncover subconscious habits
-2. **PSYCHOLOGICAL PROFILING**: Infer personality traits, cognitive preferences, and emotional patterns from digital footprints
-3. **PATTERN RECOGNITION**: Identify correlations between time, content type, interaction depth, and browsing efficiency
-4. **SURPRISE FACTOR**: Focus on insights that would genuinely surprise the user - patterns they're unconsciously following
-5. **ACTIONABLE PSYCHOLOGY**: Provide recommendations based on their discovered psychological patterns
+CHART DATA REQUIREMENTS:
+- sessionActivityOverTime: Use dates between ${optimizedAnalysisData.dataProfile.dataTimespan?.earliestDate || "N/A"} and ${optimizedAnalysisData.dataProfile.dataTimespan?.latestDate || "N/A"} ONLY
+- interactionTypeBreakdown: Use "Click", "Scroll", "Hover", "Input", "Selection", "Navigation", "Focus", "Typing" (NEVER numbers)
+- visitCountByCategory: Use "Shopping", "Productivity", "News & Media", "Travel", "Entertainment", "Social Media", "Education", "Gaming" (NEVER numbers)
+- focusTimeByDomain: Use actual domain names from data
 
-🎨 CRITICAL CHART DATA REQUIREMENTS - NO HALLUCINATION ALLOWED:
+PERSONALIZED INSIGHTS:
+- ecommerceInsights: ONLY for actual shopping domains (amazon.com, shop.*, store.*)
+- travelInsights: ONLY for actual travel domains (booking.com, expedia.com, flights.*)
+- Analyze shoppingBehavior, purchaseIntent, travelStyle, researchBehavior based on actual patterns
+- DO NOT generate insights for non-relevant domains
 
-**sessionActivityOverTime - USE ONLY REAL DATES FROM DATA:**
-- Data collection period: ${optimizedAnalysisData.dataProfile.dataTimespan?.earliestDate || "N/A"} to ${optimizedAnalysisData.dataProfile.dataTimespan?.latestDate || "N/A"}
-- NEVER create future dates or dates outside the data collection period
-- Use YYYY-MM-DD format and spread data points across the ACTUAL date range
-- Generate realistic session patterns based on firstVisitDate/lastVisitDate from the websites data
-- Each date point must be between ${optimizedAnalysisData.dataProfile.dataTimespan?.earliestDate || "N/A"} and ${optimizedAnalysisData.dataProfile.dataTimespan?.latestDate || "N/A"}
+DOMAIN RECATEGORIZATION:
+Actively analyze all domains for potential shopping/travel/productivity patterns by examining:
+- Domain patterns and user interaction behaviors
+- Time spent and engagement levels
 
-**interactionTypeBreakdown - USE DESCRIPTIVE LABELS, NEVER NUMBERS:**
-- "Click" (never 0 or "click")
-- "Scroll" (never 1 or "scroll") 
-- "Hover" (never 2 or "hover")
-- "Input" (never 3 or "input")
-- "Selection" (never 4 or "selection")
-- "Navigation" (never 5 or "navigation")
-- "Focus" (never 6 or "focus") 
-- "Typing" (never 7 or "typing")
-
-**visitCountByCategory - USE DESCRIPTIVE CATEGORY NAMES:**
-- "Shopping", "Productivity", "News & Media", "Travel", "Entertainment", "Social Media", "Education", "Gaming", "Finance", "Health & Fitness"
-- NEVER use numbers like 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
-
-**focusTimeByDomain:**
-- Use actual domain names from optimizedWebsites data
-- Use the pre-calculated totalFocusTimeMinutes values
-
-**ALL CHART DATA MUST:**
-- Use human-readable descriptive text labels ONLY
-- NEVER use numeric indices (0, 1, 2, etc.)
-- NEVER hallucinate dates outside the data collection period
-- Cross-reference every data point with the actual browsing data provided
-
-💡 INSIGHT GENERATION GUIDELINES:
-- Be specific with numbers and percentages to add credibility
-- Connect browsing patterns to real psychological concepts
-- Avoid generic insights - make them personal and surprising
-- Use evidence from the actual data to support every claim
-- Frame insights positively while being honest about areas for improvement
-- Make users excited to learn more about their own digital psychology
-
-🧬 REMEMBER: Users want to discover something fascinating about themselves they never realized. Every insight should make them think "Wow, I never noticed that pattern!" Make this report a journey of self-discovery through their digital DNA.
+CRITICAL REQUIREMENTS:
+- Use descriptive labels ONLY, NEVER numeric indices (0,1,2)
+- Use real dates from data collection period only
+- Generate insights that surprise users about their unconscious digital habits
+- Every insight must be backed by actual data from browsing history
 
 BROWSING DATA:
 ${JSON.stringify(optimizedAnalysisData, null, 2)}`,
@@ -571,6 +532,16 @@ ${JSON.stringify(optimizedAnalysisData, null, 2)}`,
                 "7": "Typing",
                 "8": "Click", // Fallback
                 "9": "Scroll", // Fallback
+                // Additional fallback patterns
+                "0.0": "Click",
+                "1.0": "Scroll",
+                "2.0": "Hover",
+                "3.0": "Input",
+                "4.0": "Selection",
+                "5.0": "Navigation",
+                "6.0": "Focus",
+                "7.0": "Typing",
+                // Common AI variations
                 click: "Click",
                 scroll: "Scroll",
                 hover: "Hover",
@@ -580,6 +551,23 @@ ${JSON.stringify(optimizedAnalysisData, null, 2)}`,
                 focus: "Focus",
                 keypress: "Typing",
                 typing: "Typing",
+                // AI might generate these variations
+                type_0: "Click",
+                type_1: "Scroll",
+                type_2: "Hover",
+                type_3: "Input",
+                type_4: "Selection",
+                type_5: "Navigation",
+                type_6: "Focus",
+                type_7: "Typing",
+                interaction_0: "Click",
+                interaction_1: "Scroll",
+                interaction_2: "Hover",
+                interaction_3: "Input",
+                interaction_4: "Selection",
+                interaction_5: "Navigation",
+                interaction_6: "Focus",
+                interaction_7: "Typing",
             };
 
             // Fix category labels aggressively
@@ -604,20 +592,52 @@ ${JSON.stringify(optimizedAnalysisData, null, 2)}`,
                 });
             }
 
-            // Fix interaction type labels aggressively
+            // AGGRESSIVELY fix interaction type labels - this is the main fix
             if (chartData.interactionTypeBreakdown) {
                 chartData.interactionTypeBreakdown = chartData.interactionTypeBreakdown.map((item: any) => {
-                    let mappedType = item.type;
+                    let mappedType = interactionMapping[item.type as keyof typeof interactionMapping];
 
-                    // Check if it's a number (string or actual number)
-                    if (typeof item.type === "number" || /^\d+$/.test(String(item.type))) {
-                        mappedType = interactionMapping[String(item.type)] || "Click";
-                    } else if (typeof item.type === "string") {
-                        // Check exact mapping first
-                        mappedType =
-                            interactionMapping[item.type.toLowerCase()] ||
-                            item.type.charAt(0).toUpperCase() + item.type.slice(1);
+                    // If no direct mapping found, try more aggressive matching
+                    if (!mappedType) {
+                        const typeStr = String(item.type).toLowerCase().trim();
+
+                        // Try exact string matching
+                        mappedType = interactionMapping[typeStr];
+
+                        // Try numeric pattern matching
+                        if (!mappedType && /^\d+(\.\d+)?$/.test(typeStr)) {
+                            const numericType = Math.floor(parseFloat(typeStr)).toString();
+                            mappedType = interactionMapping[numericType];
+                        }
+
+                        // Try removing common prefixes
+                        if (!mappedType) {
+                            const cleanType = typeStr.replace(/^(type_|interaction_|action_)/, "");
+                            mappedType = interactionMapping[cleanType];
+                        }
+
+                        // Last resort: pattern matching
+                        if (!mappedType) {
+                            if (typeStr.includes("click") || typeStr === "0") mappedType = "Click";
+                            else if (typeStr.includes("scroll") || typeStr === "1") mappedType = "Scroll";
+                            else if (typeStr.includes("hover") || typeStr === "2") mappedType = "Hover";
+                            else if (typeStr.includes("input") || typeStr === "3") mappedType = "Input";
+                            else if (typeStr.includes("selection") || typeStr === "4") mappedType = "Selection";
+                            else if (typeStr.includes("navigation") || typeStr === "5") mappedType = "Navigation";
+                            else if (typeStr.includes("focus") || typeStr === "6") mappedType = "Focus";
+                            else if (typeStr.includes("typing") || typeStr.includes("keypress") || typeStr === "7")
+                                mappedType = "Typing";
+                            else {
+                                // Final fallback: capitalize the original
+                                mappedType =
+                                    typeof item.type === "string"
+                                        ? item.type.charAt(0).toUpperCase() + item.type.slice(1)
+                                        : `Type ${item.type}`;
+                            }
+                        }
                     }
+
+                    console.log(`Mapping interaction type "${item.type}" -> "${mappedType}"`);
 
                     return {
                         ...item,

@@ -138,9 +138,9 @@ export function ReportCharts({ data }: ReportChartsProps) {
     const formatDomain = (domain: string) => {
         const isMobileCheck = typeof window !== "undefined" && window.innerWidth < 640;
         if (isMobileCheck) {
-            return domain.length > 8 ? domain.substring(0, 6) + "..." : domain;
+            return domain.length > 10 ? domain.substring(0, 8) + "..." : domain;
         }
-        return domain.length > 15 ? domain.substring(0, 12) + "..." : domain;
+        return domain.length > 20 ? domain.substring(0, 17) + "..." : domain;
     };
 
     // Format category names for better display
@@ -168,9 +168,24 @@ export function ReportCharts({ data }: ReportChartsProps) {
             const dataPoint = payload[0]?.payload;
             const citation = dataPoint?.citation;
 
+            // Format label for better display (especially for long URLs)
+            const formatLabel = (rawLabel: string) => {
+                if (typeof rawLabel === "string" && rawLabel.length > 25) {
+                    return rawLabel.substring(0, 22) + "...";
+                }
+                return rawLabel;
+            };
+
+            // Determine what type of chart this is based on the data
+            const isInteractionChart =
+                dataPoint && (dataPoint.type || dataPoint.label) && typeof dataPoint.count === "number";
+            const displayLabel = isInteractionChart ? dataPoint.type || dataPoint.label || label : label;
+
             return (
                 <div className="p-4 bg-white border border-gray-200 rounded-lg shadow-lg max-w-sm">
-                    <p className="font-medium text-gray-900 border-b border-gray-100 pb-2 mb-2">{label}</p>
+                    <p className="font-medium text-gray-900 border-b border-gray-100 pb-2 mb-2" title={displayLabel}>
+                        {formatLabel(displayLabel)}
+                    </p>
                     {payload.map((entry: any, index: number) => (
                         <div key={index} className="mb-2">
                             <p className="flex items-center justify-between" style={{ color: entry.color }}>
@@ -181,7 +196,7 @@ export function ReportCharts({ data }: ReportChartsProps) {
                                     {entry.dataKey === "sessions" && " sessions"}
                                     {entry.dataKey === "averageSessionDuration" && " min avg"}
                                     {entry.dataKey === "scrollDepth" && "%"}
-                                    {entry.dataKey === "visitCount" && " visits"}
+                                    {(entry.dataKey === "visitCount" || entry.dataKey === "value") && " visits"}
                                     {entry.dataKey === "count" && " interactions"}
                                 </span>
                             </p>
@@ -345,12 +360,18 @@ export function ReportCharts({ data }: ReportChartsProps) {
 
                                         // Handle various date formats
                                         if (typeof value === "string") {
-                                            // Try parsing as ISO string first
-                                            date = new Date(value);
-
-                                            // If that fails, try parsing as YYYY-MM-DD
-                                            if (isNaN(date.getTime()) && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-                                                date = new Date(value + "T00:00:00");
+                                            // For YYYY-MM-DD format, parse as UTC to avoid timezone issues
+                                            if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                                                const parts = value.split("-").map(Number);
+                                                if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
+                                                    const [year, month, day] = parts as [number, number, number];
+                                                    date = new Date(year, month - 1, day); // Use local date constructor
+                                                } else {
+                                                    date = new Date(value);
+                                                }
+                                            } else {
+                                                // Try parsing as ISO string first
+                                                date = new Date(value);
                                             }
                                         } else if (typeof value === "number") {
                                             date = new Date(value);
@@ -384,9 +405,17 @@ export function ReportCharts({ data }: ReportChartsProps) {
 
                                         // Handle various date formats
                                         if (typeof value === "string") {
-                                            date = new Date(value);
-                                            if (isNaN(date.getTime()) && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-                                                date = new Date(value + "T00:00:00");
+                                            // For YYYY-MM-DD format, parse as UTC to avoid timezone issues
+                                            if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                                                const parts = value.split("-").map(Number);
+                                                if (parts.length === 3 && parts.every((n) => !isNaN(n))) {
+                                                    const [year, month, day] = parts as [number, number, number];
+                                                    date = new Date(year, month - 1, day); // Use local date constructor
+                                                } else {
+                                                    date = new Date(value);
+                                                }
+                                            } else {
+                                                date = new Date(value);
                                             }
                                         } else if (typeof value === "number") {
                                             date = new Date(value);
@@ -442,37 +471,134 @@ export function ReportCharts({ data }: ReportChartsProps) {
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-lg sm:text-xl flex items-center">
-                            Interaction Patterns
+                            Interaction Type Distribution
                             {data.interactionTypeBreakdown[0]?.citation && (
                                 <CitationLink citation={data.interactionTypeBreakdown[0].citation} className="ml-2" />
                             )}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-2 sm:p-6">
+                        {/* Enhanced key/legend for numeric or unclear labels */}
+                        {data.interactionTypeBreakdown.some(
+                            (item) =>
+                                /^\d+(\.\d+)?$/.test(String(item.type)) ||
+                                String(item.type).toLowerCase().includes("type") ||
+                                ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(String(item.type))
+                        ) && (
+                            <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                                <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center">
+                                    🔑 Interaction Type Guide
+                                    <span className="ml-2 text-xs font-normal text-blue-600">
+                                        (What these numbers mean)
+                                    </span>
+                                </h4>
+                                <div className="grid grid-cols-2 gap-2 text-xs text-blue-700 md:grid-cols-4">
+                                    <div className="flex items-center space-x-2">
+                                        <span className="font-medium">0 =</span>
+                                        <span>Click</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="font-medium">1 =</span>
+                                        <span>Scroll</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="font-medium">2 =</span>
+                                        <span>Hover</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="font-medium">3 =</span>
+                                        <span>Input</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="font-medium">4 =</span>
+                                        <span>Selection</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="font-medium">5 =</span>
+                                        <span>Navigation</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="font-medium">6 =</span>
+                                        <span>Focus</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="font-medium">7 =</span>
+                                        <span>Typing</span>
+                                    </div>
+                                </div>
+                                <p className="mt-2 text-xs text-blue-600">
+                                    💡 <strong>Tip:</strong> These represent different ways you interact with websites -
+                                    clicking links, scrolling through content, hovering over elements, typing in forms,
+                                    etc.
+                                </p>
+                            </div>
+                        )}
                         <ResponsiveContainer width="100%" height={getChartHeight(280)}>
                             <BarChart
-                                data={data.interactionTypeBreakdown.map((item) => ({
-                                    ...item,
-                                    // Map interaction type to human-readable format
-                                    label: (() => {
-                                        // First try the mapping
-                                        const mappedName = INTERACTION_NAMES[item.type];
-                                        if (mappedName) return mappedName;
+                                data={data.interactionTypeBreakdown.map((item) => {
+                                    // Enhanced label mapping with better fallbacks
+                                    const typeStr = String(item.type).toLowerCase().trim();
+                                    const numericMappings: Record<string, string> = {
+                                        "0": "Click",
+                                        "1": "Scroll",
+                                        "2": "Hover",
+                                        "3": "Input",
+                                        "4": "Selection",
+                                        "5": "Navigation",
+                                        "6": "Focus",
+                                        "7": "Typing",
+                                        "0.0": "Click",
+                                        "1.0": "Scroll",
+                                        "2.0": "Hover",
+                                        "3.0": "Input",
+                                        "4.0": "Selection",
+                                        "5.0": "Navigation",
+                                        "6.0": "Focus",
+                                        "7.0": "Typing",
+                                    };
 
-                                        // If it's a numeric string, try mapping
-                                        if (typeof item.type === "string" && /^\d+$/.test(item.type)) {
-                                            return INTERACTION_NAMES[item.type] || `Type ${item.type}`;
+                                    // Determine the correct descriptive label
+                                    let mappedType: string;
+
+                                    // Try direct numeric mapping first
+                                    if (numericMappings[typeStr]) {
+                                        mappedType = numericMappings[typeStr];
+                                    } else {
+                                        // Try the existing interaction names mapping
+                                        const mappedName = INTERACTION_NAMES[typeStr];
+                                        if (mappedName) {
+                                            mappedType = mappedName;
+                                        } else {
+                                            // Pattern-based fallback for any missed cases
+                                            if (/^(0|click)/i.test(typeStr)) mappedType = "Click";
+                                            else if (/^(1|scroll)/i.test(typeStr)) mappedType = "Scroll";
+                                            else if (/^(2|hover)/i.test(typeStr)) mappedType = "Hover";
+                                            else if (/^(3|input)/i.test(typeStr)) mappedType = "Input";
+                                            else if (/^(4|selection)/i.test(typeStr)) mappedType = "Selection";
+                                            else if (/^(5|navigation)/i.test(typeStr)) mappedType = "Navigation";
+                                            else if (/^(6|focus)/i.test(typeStr)) mappedType = "Focus";
+                                            else if (/^(7|typing|keypress)/i.test(typeStr)) mappedType = "Typing";
+                                            else {
+                                                // If it's already a proper descriptive string, just capitalize
+                                                if (typeof item.type === "string" && !/^\d+(\.\d+)?$/.test(item.type)) {
+                                                    mappedType = item.type.charAt(0).toUpperCase() + item.type.slice(1);
+                                                } else {
+                                                    // Final fallback
+                                                    mappedType = `Type ${String(item.type)}`;
+                                                }
+                                            }
                                         }
+                                    }
 
-                                        // If it's already a proper string, just capitalize
-                                        if (typeof item.type === "string") {
-                                            return item.type.charAt(0).toUpperCase() + item.type.slice(1);
-                                        }
+                                    console.log(`Chart: Mapping interaction type "${item.type}" -> "${mappedType}"`);
 
-                                        // Fallback
-                                        return `Type ${String(item.type)}`;
-                                    })(),
-                                }))}
+                                    // Return the item with BOTH type and label updated so tooltips work correctly
+                                    return {
+                                        ...item,
+                                        type: mappedType, // Update the original type field for tooltips
+                                        label: mappedType, // Keep label for Y-axis display
+                                    };
+                                })}
                                 layout="horizontal"
                                 margin={{
                                     top: 20,
@@ -521,17 +647,54 @@ export function ReportCharts({ data }: ReportChartsProps) {
                                 <XAxis
                                     dataKey="timestamp"
                                     tickFormatter={(value) => {
-                                        const date = new Date(value);
-                                        return isMobile
-                                            ? date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
-                                            : date.toLocaleTimeString();
+                                        try {
+                                            // Parse timestamp and convert to user's local timezone
+                                            const date = new Date(value);
+                                            if (isNaN(date.getTime())) return String(value);
+
+                                            // Use user's local timezone automatically
+                                            return isMobile
+                                                ? date.toLocaleTimeString(undefined, {
+                                                      hour: "2-digit",
+                                                      minute: "2-digit",
+                                                      hour12: false,
+                                                  })
+                                                : date.toLocaleTimeString(undefined, {
+                                                      hour: "2-digit",
+                                                      minute: "2-digit",
+                                                      second: "2-digit",
+                                                      hour12: false,
+                                                  });
+                                        } catch {
+                                            return String(value);
+                                        }
                                     }}
                                     fontSize={isMobile ? 10 : 12}
                                 />
                                 <YAxis domain={[0, 100]} fontSize={isMobile ? 10 : 12} />
                                 <Tooltip
                                     content={<CustomTooltip />}
-                                    labelFormatter={(value) => new Date(value).toLocaleString()}
+                                    labelFormatter={(value) => {
+                                        try {
+                                            // Parse timestamp and convert to user's local timezone
+                                            const date = new Date(value);
+                                            if (isNaN(date.getTime())) return String(value);
+
+                                            // Use user's local timezone for full date/time display
+                                            return date.toLocaleString(undefined, {
+                                                weekday: "short",
+                                                year: "numeric",
+                                                month: "short",
+                                                day: "numeric",
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                                second: "2-digit",
+                                                hour12: false,
+                                            });
+                                        } catch {
+                                            return String(value);
+                                        }
+                                    }}
                                 />
                                 <Line
                                     type="monotone"

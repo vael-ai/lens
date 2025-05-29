@@ -127,7 +127,7 @@ export function SocialShare({ report }: SocialShareProps) {
 
                     {/* Preview Text */}
                     <div className="p-4 rounded-lg bg-gray-50">
-                        <h4 className="mb-2 font-medium">Preview (Twitter version):</h4>
+                        <h4 className="mb-2 font-medium">Preview (X version):</h4>
                         <p className="text-sm text-gray-700 whitespace-pre-line">{generateShareText("twitter")}</p>
                     </div>
 

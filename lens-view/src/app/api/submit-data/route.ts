@@ -81,6 +81,21 @@ const reportSchema = z.object({
                     currency: z.string(),
                 })
                 .optional(),
+            shoppingBehavior: z
+                .object({
+                    preferredShoppingTimes: z.array(z.string()),
+                    averageSessionDuration: z.number(),
+                    comparisonShoppingSites: z.array(z.string()),
+                    mostViewedBrands: z.array(z.string()),
+                })
+                .optional(),
+            purchaseIntent: z
+                .object({
+                    highIntentCategories: z.array(z.string()),
+                    researchPatterns: z.string(),
+                    priceMonitoringBehavior: z.string(),
+                })
+                .optional(),
             // Citations for ecommerce insights data
             citations: z.array(citationSchema),
         })
@@ -89,6 +104,21 @@ const reportSchema = z.object({
         .object({
             topDestinations: z.array(z.string()),
             preferredTransport: z.string().optional(),
+            travelStyle: z
+                .object({
+                    budgetPreference: z.enum(["budget", "mid-range", "luxury", "mixed"]),
+                    tripDuration: z.string(),
+                    seasonalPreferences: z.array(z.string()),
+                    accommodationTypes: z.array(z.string()),
+                })
+                .optional(),
+            researchBehavior: z
+                .object({
+                    averageResearchDuration: z.number(),
+                    informationSources: z.array(z.string()),
+                    comparisonPatterns: z.string(),
+                })
+                .optional(),
             // Citations for travel insights data
             citations: z.array(citationSchema),
         })
@@ -383,131 +413,49 @@ DATA PROFILE:
 - Active Days: ${Object.keys(websites).length > 0 ? Math.ceil((Date.now() - Math.min(...Object.values(websites).map((data: any) => Number(data.firstVisit) || Date.now()))) / (1000 * 60 * 60 * 24)) : "N/A"}
 - Total Browse Time: ${Object.keys(websites).length > 0 ? Math.round(Object.values(websites).reduce((sum: number, data: any) => sum + (Number(data.totalFocusTime) || 0), 0) / 60000) : "N/A"} minutes
 
-ANALYSIS FRAMEWORK:
-1. HIDDEN INSIGHTS EXTRACTION: Find 3-5 surprising patterns the user likely doesn't know about their browsing behavior
-2. USER BEHAVIOR PROFILING: Extract activity patterns, session characteristics, and browsing habits
-3. DOMAIN CATEGORIZATION: Classify websites by function with confidence scores
-4. INTERACTION PATTERNS: Analyze user engagement through clicks, scrolls, inputs, and navigation
-5. BEHAVIORAL INSIGHTS: Identify productivity patterns, content preferences, and digital habits
-6. VISUALIZATION DATA: Generate comprehensive chart data for interactive dashboards
+ANALYSIS REQUIREMENTS:
+1. HIDDEN INSIGHTS: Find 3-5 surprising patterns users don't know about their behavior
+2. USER PROFILING: Extract activity patterns, session characteristics, and habits
+3. DOMAIN CATEGORIZATION: Classify websites with confidence scores
+4. INTERACTION ANALYSIS: Analyze engagement through clicks, scrolls, inputs, navigation
+5. VISUALIZATION DATA: Generate comprehensive chart data with descriptive labels
 
-KEY INSIGHTS REQUIREMENTS:
-- Find patterns that would surprise the user (e.g., "You spend 40% more time on productivity sites when you have exactly 3 tabs open")
-- Identify behavioral correlations (e.g., "Your scrolling depth decreases by 30% after 15 minutes of browsing")
-- Highlight time-based patterns (e.g., "You switch tabs 2x more frequently in the afternoon than morning")
-- Show engagement patterns (e.g., "You click 3x more on weekend browsing sessions")
-- Each insight should be specific, data-driven, and actionable
-- **EACH INSIGHT MUST HAVE A COMPLETE CITATION** showing exactly what data supported this conclusion
+CHART DATA REQUIREMENTS:
+- visitCountByCategory: Use descriptive names like "Shopping", "Productivity", "News & Media" (NEVER numbers 0,1,2)
+- interactionTypeBreakdown: Use "Click", "Scroll", "Hover", "Input", "Selection", "Navigation" (NEVER numbers/abbreviations)
+- sessionActivityOverTime: Use ACTUAL timestamps from websites.*.firstVisit/lastVisit, convert to YYYY-MM-DD format
+- focusTimeByDomain: Convert totalFocusTime from milliseconds to minutes
+- All labels MUST be human-readable, NEVER numeric indices
 
-CRITICAL REQUIREMENTS FOR CHART DATA:
-- visitCountByCategory: MUST use descriptive category names like "Shopping", "Productivity", "News & Media", "Travel", "Entertainment", "Social Media", "Education", "Gaming" (NEVER use numbers like 0, 1, 2, 3, 4)
-- interactionTypeBreakdown: MUST use clear interaction names like "Click", "Scroll", "Hover", "Input", "Selection", "Navigation" (NEVER use numbers or abbreviations)
-- sessionActivityOverTime: Use ACTUAL timestamps from the raw data. Extract visit dates from websites.*.firstVisit and websites.*.lastVisit timestamps. Convert timestamps to readable YYYY-MM-DD format. Do NOT generate synthetic dates. Group browsing sessions by actual dates when the user visited websites.
-- focusTimeByDomain: Use actual domain names from the data and convert totalFocusTime from milliseconds to minutes
-- ALL chart labels MUST be human-readable descriptive text, NEVER numeric indices or abbreviations
-- Use REAL timestamps from the raw browsing data, not synthetic dates
+PERSONALIZED INSIGHTS:
+- ecommerceInsights: ONLY for actual shopping domains (amazon.com, ebay.com, shop.*, store.*)
+- travelInsights: ONLY for actual travel domains (booking.com, expedia.com, airbnb.com, flights.*)
+- Analyze shoppingBehavior, purchaseIntent, travelStyle, researchBehavior based on actual domain patterns
+- DO NOT generate insights for non-relevant domains
 
-CITATION REQUIREMENTS - ABSOLUTELY CRITICAL - EVERY FIELD MUST HAVE CITATIONS:
-- For EVERY single data point, insight, and metric, you MUST provide a citation. NO EXCEPTIONS.
-- EVERY citation object must have ALL required fields filled out:
-  * sourceId: Create a unique ID in the format "data-{domain or category}-{number}" (e.g., "data-amazon-1")
-  * domainOrFeature: Specify the exact domain, feature, or data category this insight comes from
-  * dataType: Specify the type of data (e.g., "interaction", "metadata", "browsing pattern")
-  * confidence: Include a confidence score from 0.1 to 1.0 based on how strongly the data supports the conclusion
-  * timeRangeStart and timeRangeEnd: Use today's date ${new Date().toISOString().split("T")[0]} for time ranges if specific dates aren't available
-  * dataPath: CRITICAL - Include the exact JSON path to the data used (e.g., "websites.amazon.com.totalFocusTime", "websites.youtube.com.interactions.click.count")
-  * rawDataValue: Include the actual data value used from the browsing data (e.g., 45000, 23, ["electronics", "books"])
-  * calculation: If the insight was derived from calculations, explain how (e.g., "totalFocusTime / visitCount = average", "sum of all click counts")
+DOMAIN RECATEGORIZATION:
+Actively recategorize domains by analyzing:
+- Patterns: shop.*, booking.*, github.*, slack.*
+- User behavior: heavy clicking suggests shopping, research patterns suggest travel
+- Time spent and interaction types
 
-TRANSPARENCY REQUIREMENTS:
-- Every citation MUST reference actual data from the provided browsing data
-- Use exact JSON paths that match the CollectedData interface structure
-- Include actual values, not estimates or rounded numbers
-- For insights based on multiple data points, show the key contributing values
-- Users should be able to trace every insight back to their raw data
+CITATION REQUIREMENTS (MANDATORY):
+Every data point MUST have complete citations:
+- sourceId: "data-{domain/category}-{number}"
+- domainOrFeature: Exact domain or data category
+- dataType: "interaction", "metadata", "browsing pattern"
+- confidence: 0.1-1.0 based on data strength
+- timeRangeStart/End: Use ${new Date().toISOString().split("T")[0]} if unavailable
+- dataPath: Exact JSON path (e.g., "websites.amazon.com.totalFocusTime")
+- rawDataValue: Actual value from browsing data
+- calculation: How insight was derived
 
-DATA PATH EXAMPLES:
-- User activity level: "browserPatterns.averageSessionDuration" with value in milliseconds
-- Domain focus time: "websites.{domain}.totalFocusTime" with exact millisecond value
-- Interaction patterns: "websites.{domain}.interactions.{type}.count" with exact count
-- Visit frequency: "websites.{domain}.visitCount" with exact number
-- Domain classification: "websites.{domain}.inferredDomainClassification.primaryType" with classification
-- Browser patterns: "browserPatterns.averageDailyTabs" with exact tab count
-- Visit timestamps: "websites.{domain}.firstVisit" and "websites.{domain}.lastVisit" with exact timestamp values
-
-TIMESTAMP PROCESSING INSTRUCTIONS:
-- Extract firstVisit and lastVisit timestamps from each website entry
-- Convert timestamps (in milliseconds) to YYYY-MM-DD format for sessionActivityOverTime
-- Group website visits by date to calculate sessions per day
-- Use actual visit dates, not synthetic or current dates
-- Example: if websites.example.com.firstVisit = 1703980800000, convert to "2023-12-30"
-
-The goal is COMPLETE TRANSPARENCY - users must be able to see exactly what data supported each conclusion.
-
-DATA UNIT CONVERSION NOTES:
-- Convert totalFocusTime from milliseconds to minutes for display (divide by 60000)
-- Convert averageSessionDuration from milliseconds to minutes for display (divide by 60000) 
-- Show actual millisecond values in citations for transparency
-- Use exact values from the data, not estimates
-- For averageSessionDurationMinutes: use browserPatterns.averageSessionDuration / 60000
-
-CALCULATION EXAMPLES FOR CITATIONS:
-- Average session duration: dataPath="browserPatterns.averageSessionDuration", rawDataValue=1800000, calculation="averageSessionDuration (1800000 ms) / 60000 = 30 minutes"
-- Focus time per domain: dataPath="websites.example.com.totalFocusTime", rawDataValue=120000, calculation="totalFocusTime (120000 ms) / 60000 = 2 minutes"
-- Average tabs: dataPath="browserPatterns.averageDailyTabs", rawDataValue=8, calculation="direct value from browserPatterns"
-
-EXAMPLE COMPLETE CITATION:
-{
-  "sourceId": "data-browser-patterns-1",
-  "domainOrFeature": "Browser Patterns",
-  "dataType": "session duration",
-  "confidence": 0.95,
-  "timeRangeStart": "2024-01-01",
-  "timeRangeEnd": "2024-01-07",
-  "dataPath": "browserPatterns.averageSessionDuration",
-  "rawDataValue": 1800000,
-  "calculation": "averageSessionDuration (1800000 ms) / 60000 = 30 minutes"
-}
-
-INTERACTION TYPE MAPPING (use these exact names):
-- click → "Click"
-- scroll → "Scroll" 
-- hover → "Hover"
-- input → "Input"
-- selection → "Selection"
-- navigation → "Navigation"
-- focus → "Focus"
-- keypress → "Typing"
-
-CATEGORY MAPPING (use these exact names):
-- shopping → "Shopping"
-- travel → "Travel" 
-- productivity → "Productivity"
-- news → "News & Media"
-- miscellaneous → "Entertainment"
-- social → "Social Media"
-- education → "Education"
-- gaming → "Gaming"
-- finance → "Finance"
-- health → "Health & Fitness"
-
-CRITICAL REQUIREMENTS:
-- **CITATIONS ARE MANDATORY**: Every single data point MUST have a complete citation with sourceId, dataPath, and rawDataValue
-- **CITATION ARRAYS**: Every section must have AT LEAST 3 citations in their citations array (userProfileSummary.citations, interactionPatterns.citations, etc.)
-- **INDIVIDUAL CITATIONS**: Every chart data item must have its own citation object
-- **COMPLETE CITATION FIELDS**: Every citation must have sourceId, domainOrFeature, dataType, dataPath, and rawDataValue filled out
-- Provide nuanced insights based on actual usage patterns
-- Calculate meaningful engagement metrics and confidence scores
-- Generate rich chart data for all visualization types with proper descriptive labels
-- Identify actionable optimization opportunities
-- Consider temporal patterns and session behaviors
-- Ensure all chart data uses human-readable names, never numbers or indices
-- **NO DATA WITHOUT CITATIONS**: If you cannot provide a citation for a data point, do not include that data point
+TIMESTAMP FORMAT:
+- Output all timestamps in UTC ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)
+- Let frontend handle timezone conversion
 
 RAW BROWSING DATA:
-${JSON.stringify(fullAnalysisData, null, 2)}
-
-**FINAL REMINDER**: EVERY SINGLE DATA POINT IN YOUR RESPONSE MUST HAVE A COMPLETE CITATION. Do not generate any metric, insight, or chart data without providing the exact source data path and raw value that supports it. The user needs to be able to trace every conclusion back to their actual browsing data.`,
+${JSON.stringify(fullAnalysisData, null, 2)}`,
             maxTokens: 32000, // Leverage 2.5's higher output limit
         });
 
@@ -564,6 +512,16 @@ ${JSON.stringify(fullAnalysisData, null, 2)}
                 "6": "Focus",
                 "7": "Typing",
                 "8": "Keypress",
+                // Additional fallback patterns
+                "0.0": "Click",
+                "1.0": "Scroll",
+                "2.0": "Hover",
+                "3.0": "Input",
+                "4.0": "Selection",
+                "5.0": "Navigation",
+                "6.0": "Focus",
+                "7.0": "Typing",
+                // Common AI variations
                 click: "Click",
                 scroll: "Scroll",
                 hover: "Hover",
@@ -573,15 +531,23 @@ ${JSON.stringify(fullAnalysisData, null, 2)}
                 focus: "Focus",
                 keypress: "Typing",
                 typing: "Typing",
-                // Additional fallbacks
-                "type 0": "Click",
-                "type 1": "Scroll",
-                "type 2": "Hover",
-                "type 3": "Input",
-                "type 4": "Selection",
-                "type 5": "Navigation",
-                "type 6": "Focus",
-                "type 7": "Typing",
+                // AI might generate these variations
+                type_0: "Click",
+                type_1: "Scroll",
+                type_2: "Hover",
+                type_3: "Input",
+                type_4: "Selection",
+                type_5: "Navigation",
+                type_6: "Focus",
+                type_7: "Typing",
+                interaction_0: "Click",
+                interaction_1: "Scroll",
+                interaction_2: "Hover",
+                interaction_3: "Input",
+                interaction_4: "Selection",
+                interaction_5: "Navigation",
+                interaction_6: "Focus",
+                interaction_7: "Typing",
             };
 
             // Fix category labels
@@ -599,25 +565,52 @@ ${JSON.stringify(fullAnalysisData, null, 2)}
                 });
             }
 
-            // Fix interaction type labels
+            // AGGRESSIVELY fix interaction type labels - this is the main fix
             if (chartData.interactionTypeBreakdown) {
                 chartData.interactionTypeBreakdown = chartData.interactionTypeBreakdown.map((item: any) => {
                     let mappedType = interactionMapping[item.type as keyof typeof interactionMapping];
 
-                    // If no mapping found, try to clean up the type
+                    // If no direct mapping found, try more aggressive matching
                     if (!mappedType) {
-                        if (typeof item.type === "string") {
-                            // Handle numeric strings
-                            if (/^\d+$/.test(item.type)) {
-                                mappedType = interactionMapping[item.type] || `Type ${item.type}`;
-                            } else {
-                                // Capitalize first letter for string types
-                                mappedType = item.type.charAt(0).toUpperCase() + item.type.slice(1);
+                        const typeStr = String(item.type).toLowerCase().trim();
+
+                        // Try exact string matching
+                        mappedType = interactionMapping[typeStr];
+
+                        // Try numeric pattern matching
+                        if (!mappedType && /^\d+(\.\d+)?$/.test(typeStr)) {
+                            const numericType = Math.floor(parseFloat(typeStr)).toString();
+                            mappedType = interactionMapping[numericType];
+                        }
+
+                        // Try removing common prefixes
+                        if (!mappedType) {
+                            const cleanType = typeStr.replace(/^(type_|interaction_|action_)/, "");
+                            mappedType = interactionMapping[cleanType];
+                        }
+
+                        // Last resort: pattern matching
+                        if (!mappedType) {
+                            if (typeStr.includes("click") || typeStr === "0") mappedType = "Click";
+                            else if (typeStr.includes("scroll") || typeStr === "1") mappedType = "Scroll";
+                            else if (typeStr.includes("hover") || typeStr === "2") mappedType = "Hover";
+                            else if (typeStr.includes("input") || typeStr === "3") mappedType = "Input";
+                            else if (typeStr.includes("selection") || typeStr === "4") mappedType = "Selection";
+                            else if (typeStr.includes("navigation") || typeStr === "5") mappedType = "Navigation";
+                            else if (typeStr.includes("focus") || typeStr === "6") mappedType = "Focus";
+                            else if (typeStr.includes("typing") || typeStr.includes("keypress") || typeStr === "7")
+                                mappedType = "Typing";
+                            else {
+                                // Final fallback: capitalize the original
+                                mappedType =
+                                    typeof item.type === "string"
+                                        ? item.type.charAt(0).toUpperCase() + item.type.slice(1)
+                                        : `Type ${item.type}`;
                             }
-                        } else {
-                            mappedType = `Type ${String(item.type)}`;
                         }
                     }
+
+                    console.log(`Mapping interaction type "${item.type}" -> "${mappedType}"`);
 
                     return {
                         ...item,

@@ -1,222 +1,128 @@
-# 🔍 lens by Vael - Privacy-First Browsing Intelligence Platform
+# 🔍 lens - Privacy-First Browsing Intelligence
 
-![lens Platform](https://i.ibb.co/s9LhqXRZ/image.png)
+<div align="center">
+<img src="https://i.ibb.co/mV1fThb9/image.png" alt="lens Platform" width="650">
+</div>
 
-**[lens](https://lens.vael.ai)** is a privacy-first browsing intelligence platform that transforms your browsing behavior into meaningful insights. Consisting of a secure browser extension and web analytics platform, lens empowers users with deep understanding of their digital habits while maintaining complete data ownership.
+**[lens](https://lens.vael.ai)** is a privacy-first browsing intelligence platform that transforms your browsing behavior into meaningful insights. Built with a secure browser extension and web analytics platform, lens empowers users with deep understanding of their digital habits while maintaining complete data ownership.
 
-**Made by [Vael](https://vael.ai)**
+**Made by [Vael AI](https://vael.ai)**
 
-## 🔒 Privacy & Security First
+## 🌟 Key Features
 
-**Your data, your control:**
+-   **🔒 Privacy-First**: Local storage, end-to-end encryption, complete data ownership
+-   **🧠 AI-Powered Insights**: Advanced pattern recognition using Gemini AI
+-   **📊 Smart Analytics**: Automatic categorization, persona detection, behavioral insights
+-   **🔐 Open Source**: Fully transparent codebase for privacy verification
+-   **🏠 Self-Hostable**: Deploy on your own infrastructure
 
--   **🏠 Local-First Storage**: Extension stores all data locally until you choose to generate reports
--   **🔐 End-to-End Encryption**: All data transmission is encrypted and secure
--   **💾 Complete Data Ownership**: Full control over your information - export or delete anytime
--   **🏠 Self-Hostable**: Deploy on your own infrastructure for maximum privacy
--   **⏰ Temporary Server Processing**: Reports processed and data immediately purged
--   **🎯 Minimal Data Collection**: Only collects what's necessary for insights generation
--   **🔓 Open Source**: Fully transparent codebase - audit all privacy measures yourself
+## 🏗️ Architecture
 
----
-
-## 🌟 Core Features
-
-### 🧠 **AI-Powered Intelligence**
-
--   **Advanced Pattern Recognition**: Gemini AI analyzes browsing patterns with massive token scaling
--   **Smart Categorization**: Automatically categorizes websites and behaviors
--   **Persona Detection**: Identifies user types (power user, researcher, casual browser, etc.)
--   **Behavioral Insights**: Discovers productivity patterns and optimization opportunities
-
-### 📊 **Multi-Report Analytics**
-
--   **Concurrent Processing**: Generate multiple reports simultaneously
--   **Historical Comparison**: Compare browsing patterns across different time periods
--   **Trend Analysis**: Track behavioral changes and improvements over time
--   **Export & Sharing**: Download detailed reports or share insights securely
-
-### 🚀 **Enterprise-Grade Scalability**
-
--   **Infinite Horizontal Scaling**: Serverless architecture handles any load
--   **Token Optimization**: Advanced Gemini token management for cost-effective AI processing
--   **Background Processing**: Heavy computations run asynchronously
--   **Intelligent Caching**: Smart data caching reduces API calls and improves performance
-
----
-
-## 🔄 How The Platform Works
-
-### 1. **Data Collection** (Browser Extension)
-
-```
-👤 User Browses → 🔍 Extension Monitors → 💾 Local Storage
-```
-
--   **Silent Monitoring**: Collects browsing data without affecting performance
--   **Smart Filtering**: Automatically excludes sensitive domains (banking, private sites)
--   **User Control**: Master toggle and granular controls for all data collection
--   **Local Storage**: All data stays on device until user initiates report generation
-
-### 2. **Secure Data Transmission**
-
-```
-💾 Local Data → 🔐 Encryption → 🌐 Secure API → 🛡️ Validation
-```
-
--   **End-to-End Encryption**: Data encrypted before leaving browser
--   **JWT Authentication**: Secure token-based authentication
--   **Rate Limiting**: Protection against abuse and spam
--   **Data Validation**: Comprehensive sanitization and validation
-
-### 3. **AI Processing & Analysis**
-
-```
-📊 Raw Data → 🧠 Gemini AI → 🎯 Pattern Recognition → 📈 Insights Generation
-```
-
--   **Massive Scale Processing**: Handles large datasets with optimized token usage
--   **Multi-Model Analysis**: Uses multiple AI models for different insights
--   **Real-time Progress**: Users see analysis progress in real-time
--   **Background Processing**: Heavy computations don't block user experience
-
-### 4. **Insight Generation & Visualization**
-
-```
-📈 AI Insights → 📊 Interactive Charts → 📱 Responsive UI → 💾 Export Options
-```
-
--   **Dynamic Visualizations**: Interactive charts built with Recharts
--   **Mobile-Optimized**: Perfect experience across all devices
--   **Export Capabilities**: Download reports in multiple formats
--   **Sharing Controls**: Privacy-conscious sharing options
-
----
-
-## 🏗️ Architecture Overview
-
-### **Monorepo Structure**
+**Monorepo Structure:**
 
 ```
 lens/
-├── 📁 lens/                      # Browser Extension (Plasmo)
-│   ├── 🔍 Data Collection        # Privacy-first browsing data collection
-│   ├── ⚙️ User Controls          # Master toggles and privacy settings
-│   ├── 🛡️ Local Storage          # Secure local data management
-│   └── 🌐 API Communication      # Secure data transmission
+├── 📁 lens/           # Browser Extension (Plasmo + React)
+│   └── Privacy-first data collection & local storage
 │
-├── 📁 lens-view/                 # Web Platform (Next.js)
-│   ├── 🧠 AI Processing          # Gemini AI integration and analysis
-│   ├── 📊 Data Visualization     # Interactive charts and dashboards
-│   ├── 🗄️ Database Management    # MongoDB with optimized scaling
-│   └── 🔐 Authentication         # JWT-based security system
+├── 📁 lens-view/      # Web Platform (Next.js + MongoDB)
+│   └── AI processing, visualization & reports
 ```
 
-### **Technology Stack**
+**Tech Stack:**
 
-**Browser Extension (Plasmo Framework)**
+-   **Extension**: Plasmo, React 18, TypeScript, Tailwind CSS
+-   **Platform**: Next.js 15, React 19, MongoDB, Gemini AI
+-   **UI**: Radix UI, Recharts, responsive design
 
--   **React 18** + TypeScript for robust UI components
--   **Tailwind CSS** with custom design system
--   **Radix UI** for accessible, unstyled primitives
--   **Chrome Storage API** for secure local data management
-
-**Web Platform (Next.js)**
-
--   **Next.js 15** with App Router for optimal performance
--   **React 19** with concurrent features and Suspense
--   **MongoDB** for flexible, scalable data storage
--   **Gemini AI** for advanced pattern recognition and insights
-
----
+**Data Schema**: Complete data structure defined in [`lens/src/types/data.ts`](./lens/src/types/data.ts)
 
 ## 🚀 Quick Start
 
-### **For Users**
-
-1. **Install Extension**: Download from Chrome Web Store (coming soon)
-2. **Set Preferences**: Configure privacy settings and data collection preferences
-3. **Browse Normally**: Extension collects data silently in the background
-4. **Generate Reports**: Visit **[lens.vael.ai](https://lens.vael.ai)** to create insights
-5. **Explore Insights**: Discover patterns and optimize your browsing habits
-
-### **For Developers**
+### Development Setup
 
 ```bash
-# Clone the repository
+# Clone and install dependencies
 git clone <repository-url>
 cd lens
-
-# Install dependencies for both projects
 pnpm install
 
-# Start development servers
-pnpm dev:extension  # Browser extension (localhost:1947)
-pnpm dev:web       # Web platform (localhost:3000)
+# Start extension development (in one terminal)
+cd lens
+pnpm dev
 
-# Build for production
-pnpm build:all
+# Start web platform development (in another terminal)
+cd lens-view
+pnpm dev
+
+# Build both projects for production
+cd lens && pnpm build
+cd lens-view && pnpm build
 ```
 
-### **Environment Setup**
+### Environment Setup
+
+**Extension** (`.env.local` in `/lens`):
 
 ```bash
-# Extension Environment (.env.local in /lens)
-PLASMO_PUBLIC_USE_LOCAL_API=true  # Use local development server
-
-# Web Platform Environment (.env.local in /lens-view)
-MONGODB_URI=mongodb://localhost:27017/lens
-GOOGLE_GENERATIVE_AI_API_KEY=your_google_ai_key
-INTERNAL_JWT_SECRET=your_jwt_secret_min_32_chars
-USE_LOCAL_API=true  # Connect to local development server
+# API Configuration
+PLASMO_PUBLIC_USE_LOCAL_API=true # true for local API URL, false for production API URL (lens.vael.ai)
 ```
 
-### **Data Structure**
+**Web Platform** (`.env.local` in `/lens-view`):
 
-For details on the complete data structure and schema used by the extension, see the [data types definition](lens/src/types/data.ts).
+```bash
+# MongoDB Connection String
+# Get this from your MongoDB dashboard
+MONGODB_URI=your_mongodb_atlas_key_here
 
----
+# Google Gemini API Key
+# Get this from Google AI Studio: https://aistudio.google.com/app/apikey
+GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_api_key_here
 
-## 🛡️ Security & Compliance
+# JWT Secret for internal authentication
+INTERNAL_JWT_SECRET="your_very_secure_jwt_secret_key_here_at_least_32_chars" # at least 32 characters
 
-### **Data Protection**
+# Development Configuration
+USE_LOCAL_API=true # When this is set, the API will always generate new reports regardless of data similarity or size differences (tells app you are running locally)
+```
 
--   **GDPR Compliant**: Full data portability and right to deletion
--   **CCPA Compliant**: Transparent data practices and user rights
--   **SOC 2 Ready**: Security controls designed for enterprise compliance
+## 🔒 Privacy & Security
 
-### **Privacy by Design**
+-   **Local-First**: Extension stores data locally until you generate reports
+-   **End-to-End Encryption**: All data transmission is encrypted
+-   **Data Ownership**: Full control - export or delete anytime
+-   **Minimal Collection**: Only collects what's necessary
+-   **Transparent**: Open source for complete auditability
 
--   **Data Minimization**: Collect only what's necessary for functionality
--   **Purpose Limitation**: Data used only for stated purposes
--   **Storage Limitation**: Automatic data purging after configurable periods
--   **Transparency**: Open source code allows full privacy verification
+## 🛡️ How It Works
 
----
+1. **Collection**: Browser extension monitors browsing (locally stored)
+2. **Processing**: Secure transmission to AI for analysis
+3. **Insights**: Generate behavioral patterns and recommendations
+4. **Visualization**: Interactive charts and personalized insights
 
 ## 🤝 Contributing
 
-We welcome contributions! This is a monorepo with two main projects:
+We welcome contributions! Each project has its own setup:
 
-1. **Fork the repository** and clone your fork
-2. **Install dependencies**: `pnpm install` (from root)
-3. **Choose your focus**: Extension development (`/lens`) or web platform (`/lens-view`)
-4. **Follow coding standards**: TypeScript, Prettier, ESLint
-5. **Submit pull requests** with clear descriptions
+-   **Extension Development**: See [`/lens/README.md`](./lens/README.md)
+-   **Platform Development**: See [`/lens-view/README.md`](./lens-view/README.md)
 
----
+1. Fork the repository
+2. Choose your focus area (extension or platform)
+3. Follow the project-specific setup guides
+4. Submit PRs with clear descriptions
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
-
----
+MIT License - see [LICENSE](LICENSE) file.
 
 ## 🔗 Links
 
 -   **🌐 Platform**: [lens.vael.ai](https://lens.vael.ai)
 -   **🏢 Company**: [vael.ai](https://vael.ai)
--   **📧 Contact**: [hello@vael.ai](hello:team@vael.ai)
+-   **📧 Contact**: [hello@vael.ai](mailto:hello@vael.ai)
 
 ---
 

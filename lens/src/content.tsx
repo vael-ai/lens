@@ -1,4 +1,4 @@
-// Content script for Vael AI Context Bank
+// Content script for lens by vael Context Bank
 import cssText from "data-text:./main.css"
 import type { PlasmoCSConfig } from "plasmo"
 import { useEffect, useState } from "react"
@@ -6,7 +6,11 @@ import { useEffect, useState } from "react"
 import { Storage } from "@plasmohq/storage"
 
 import type { InteractionData, TabActivity } from "./types/data"
-import { sendAnalyticsEvent } from "./utils/api"
+import {
+  getCurrentDataSize,
+  sendAnalyticsEvent,
+  validateDataCollection
+} from "./utils/api"
 import { collectDomainSpecificData } from "./utils/collectors/domain-specific"
 import { collectUserInteractions } from "./utils/collectors/interactions"
 import { collectPageMetadata } from "./utils/collectors/metadata"
@@ -21,9 +25,13 @@ import {
 } from "./utils/dataCollection"
 import { classifyCurrentPage } from "./utils/domainClassifier"
 import { generateUUID } from "./utils/helpers"
+import { sendMessage, type MessagePayload } from "./utils/messaging"
 import type { IconPayload, MessageNames } from "./utils/messaging"
-import { sendMessage } from "./utils/messaging"
-import { getUserConfig, isDomainBlacklisted } from "./utils/userPreferences"
+import {
+  getUserConfig,
+  isDomainBlacklisted,
+  shouldCollectData
+} from "./utils/userPreferences"
 import type { UserConfig } from "./utils/userPreferences"
 
 /**
@@ -122,7 +130,10 @@ interface CollectionStatus {
  * @param name - The message name/type to send
  * @param body - The message payload
  */
-function sendToBackgroundScript<T>(name: MessageNames, body: T): void {
+function sendToBackgroundScript<T extends MessagePayload>(
+  name: MessageNames,
+  body: T
+): void {
   // Use our safe messaging utility instead of direct chrome.runtime.sendMessage
   sendMessage(name, body).catch((error) => {
     // Handle the "Unknown message type" error gracefully
@@ -341,26 +352,26 @@ const CollectionIndicator = () => {
   const [config, setConfig] = useState<UserConfig | null>(null)
   const [isBlacklisted, setIsBlacklisted] = useState(false)
 
-  // Check if the current domain is blacklisted
+  // Check if data collection should be active for this URL
   useEffect(() => {
-    const checkBlacklist = async () => {
+    const checkCollectionStatus = async () => {
       try {
         const config = await getUserConfig()
         setConfig(config)
         const blacklisted = await isDomainBlacklisted(window.location.hostname)
         setIsBlacklisted(blacklisted)
 
-        // Set active state based on config and blacklist
-        const active = config.masterCollectionEnabled && !blacklisted
+        // Use shouldCollectData which properly checks email, master toggle, and blacklist
+        const active = await shouldCollectData(window.location.href)
 
         setIsActive(active)
       } catch (error) {
-        logNonContextError(error, "Error checking blacklist status")
+        logNonContextError(error, "Error checking collection status")
         setIsActive(false)
       }
     }
 
-    checkBlacklist()
+    checkCollectionStatus()
   }, [])
 
   // Set up interaction collection
@@ -421,6 +432,21 @@ const CollectionIndicator = () => {
       if (!isActive || !config) return
 
       try {
+        // Validate data collection before proceeding
+        const currentDataSize = await getCurrentDataSize()
+        const validation = await validateDataCollection(
+          window.location.href,
+          currentDataSize
+        )
+
+        if (!validation.allowed) {
+          console.log(
+            `lens: Data collection blocked for ${window.location.href}: ${validation.reason}`
+          )
+          updateExtensionIcon(IconState.DISABLED)
+          return
+        }
+
         // Create a unique visit ID for this page view
         const visitId = generateUUID()
 
@@ -508,18 +534,27 @@ const CollectionIndicator = () => {
         // Set up unload handler
         window.addEventListener("beforeunload", handleBeforeUnload)
 
-        // Periodic update of tab activity (every 30 seconds)
+        // Periodic update of tab activity (every 30 seconds) - only if there's meaningful activity
         const activityInterval = setInterval(() => {
           try {
             const activityData = tabTracker.getData()
-            updateTabActivity(window.location.href, activityData).catch(
-              (error) => {
-                warnNonContextError(
-                  error,
-                  "Error updating periodic tab activity"
-                )
-              }
-            )
+
+            // Only update if there's meaningful activity since last update
+            const hasActivity =
+              activityData.focusTime > 5000 || // More than 5 seconds of focus
+              activityData.activationCount > 0 || // User activated/clicked on tab
+              activityData.visibilityEvents.length > 0 // Visibility changes
+
+            if (hasActivity) {
+              updateTabActivity(window.location.href, activityData).catch(
+                (error) => {
+                  warnNonContextError(
+                    error,
+                    "Error updating periodic tab activity"
+                  )
+                }
+              )
+            }
           } catch (error) {
             warnNonContextError(
               error,

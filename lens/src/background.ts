@@ -5,6 +5,12 @@ import { createAnalyticsEvent } from "./utils/dataCollection"
 import { registerMessageHandler } from "./utils/messaging"
 import type { IconPayload } from "./utils/messaging"
 import {
+  checkDataSizeAndNotify,
+  initializeNotifications,
+  resetNotificationState,
+  showReportCompletedNotification
+} from "./utils/notifications"
+import {
   getUserConfig,
   isDomainBlacklisted,
   shouldCollectData,
@@ -12,7 +18,7 @@ import {
 } from "./utils/userPreferences"
 
 /**
- * Vael AI Context Bank - Background Script
+ * lens by vael Context Bank - Background Script
  *
  * This script handles:
  * - Extension icon and badge management
@@ -191,6 +197,26 @@ registerMessageHandler("getTabId", async (_, sender) => {
     return { tabId: null, error: "Failed to get tab ID", success: false }
   }
 })
+
+// Handle report completion notifications
+registerMessageHandler<{ reportId: string; email: string }>(
+  "reportCompleted",
+  async (payload) => {
+    try {
+      console.log(
+        `Report completed notification received: ${payload.reportId} for ${payload.email}`
+      )
+      await showReportCompletedNotification(payload.reportId)
+      return { success: true }
+    } catch (error) {
+      console.error("Error handling report completion notification:", error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error"
+      }
+    }
+  }
+)
 
 // Listen for changes to browser tabs and reset icon
 try {
@@ -397,11 +423,11 @@ const setIconState = async (state: string, tabId: number) => {
 chrome.runtime.onInstalled.addListener(async (details) => {
   try {
     if (details.reason === "install") {
-      // First time installation - initialize with all data collection enabled
+      // First time installation - initialize with data collection disabled until email is provided
       const userConfig = await getUserConfig()
 
-      // Make sure all toggles are on
-      userConfig.masterCollectionEnabled = true
+      // Individual collection settings can be on by default, but master toggle stays off until email is provided
+      userConfig.masterCollectionEnabled = false // Keep disabled until email is provided
       userConfig.collectPageMetadata = true
       userConfig.collectInteractions = true
       userConfig.collectDeviceInfo = true
@@ -414,12 +440,13 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       // Save the config
       await updateUserConfig(userConfig)
 
-      // First time installation - send analytics
-      const analyticsEvent = createAnalyticsEvent("extension_enabled")
-      sendAnalyticsEvent(analyticsEvent)
+      // Don't send analytics on install since collection is disabled
 
       // Don't automatically open options page
     }
+
+    // Initialize notification system for all install/update scenarios
+    await initializeNotifications()
   } catch (error) {
     console.error("Error handling installation:", error)
   }

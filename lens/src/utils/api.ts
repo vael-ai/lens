@@ -1,3 +1,9 @@
+import {
+  DATA_LIMITS,
+  DataSizeUtils,
+  PRIVACY_CONFIG
+} from "@/config/data-limits"
+
 import { Storage } from "@plasmohq/storage"
 
 import type {
@@ -9,6 +15,13 @@ import type {
   WebsiteData
 } from "../types/data"
 import { collectDeviceInfo } from "./collectors/device"
+/**
+ * Sends collected data to the lens by vael Context Bank service
+ * Main entry point for sending data to the server
+ * @param data - The collected data to send
+ * @returns Promise resolving to true if successful, false otherwise
+ */
+import { MAX_DATA_COLLECTION_BYTES } from "./constants"
 import { exportCollectedData } from "./dataCollection"
 import {
   createElementPath,
@@ -16,13 +29,20 @@ import {
   getElementTypeDescription
 } from "./domUtils"
 import { generateUUID, isValidUrl } from "./helpers"
-import { getUserConfig, getUserId } from "./userPreferences"
+import { checkDataSizeAndNotify } from "./notifications"
+import {
+  getUserConfig,
+  getUserId,
+  isDomainBlacklisted
+} from "./userPreferences"
 
-// Default API endpoint
-const API_BASE_URL = "https://api.vael.ai"
+// Get API base URL based on environment variable
+const getAPIBaseURL = () => {
+  const useLocalAPI = process.env.PLASMO_PUBLIC_USE_LOCAL_API === "true"
+  return useLocalAPI ? "http://localhost:3000" : "https://lens.vael.ai"
+}
 
-// Enable testing mode - only store locally, don't send to server
-const TESTING_MODE = true
+const API_BASE_URL = getAPIBaseURL()
 
 // Storage for pending API requests
 let storage: Storage
@@ -456,9 +476,6 @@ async function sendWithRetry(
  * Attempts to send queued data to the server with retry logic
  */
 export async function processPendingData(): Promise<void> {
-  // Skip processing in testing mode
-  if (TESTING_MODE) return
-
   try {
     // Get queued data
     const queuedData = await safeStorageOp(async () => {
@@ -527,31 +544,18 @@ export const sendDataToServer = async (
   data: CollectedData
 ): Promise<boolean> => {
   try {
-    // Add user ID to the data
-    const userId = await getUserId()
-    const dataWithUserId = {
-      ...data,
-      userId
-    }
-
-    // In testing mode, just store locally and don't send to server
-    if (TESTING_MODE) {
-      // Just store the data directly without conversion
-      await safeStorageOp(
-        async () => storage.set(COLLECTED_DATA_KEY, dataWithUserId),
-        null
-      )
-      return true
-    }
-
-    // Try to send the data
-    return await sendWithRetry(
-      `${API_BASE_URL}/collect`,
-      dataWithUserId,
-      API_CONFIG.maxRetries
+    // This function is now only used for local retry processing
+    // For report generation, use the popup's handleGenerateReport instead
+    console.warn(
+      "sendDataToServer called - this should only be used for internal retry logic"
     )
+
+    // Store data locally instead of trying to send incomplete request
+    await safeStorageOp(async () => storage.set(COLLECTED_DATA_KEY, data), null)
+
+    return true
   } catch (error) {
-    console.error("Error sending data to server:", error)
+    console.error("Error storing data locally:", error)
 
     // Queue the data for retry
     await queueDataForRetry(data)
@@ -602,6 +606,8 @@ async function storeAnalyticsLocally(event: AnalyticsEvent): Promise<boolean> {
 export const sendAnalyticsEvent = async (
   event: AnalyticsEvent
 ): Promise<boolean> => {
+  // Analytics disabled for now - keeping code for future use
+  /*
   try {
     // Add user ID to the analytics data if possible
     let analyticsData: Record<string, any> = { ...event }
@@ -613,17 +619,9 @@ export const sendAnalyticsEvent = async (
       // Continue without userId if it can't be retrieved
     }
 
-    // In testing mode, just store locally and don't send to server
-    if (TESTING_MODE) {
-      return await storeAnalyticsLocally(analyticsData as AnalyticsEvent)
-    }
-
-    // Prepare endpoint URL
-    const endpoint = `${API_BASE_URL}/analytics`
-
     // Send analytics to the server with retry logic
     const success = await sendWithRetry(
-      endpoint,
+      `${API_BASE_URL}/api/analytics`,
       analyticsData,
       API_CONFIG.maxRetries
     )
@@ -642,6 +640,11 @@ export const sendAnalyticsEvent = async (
 
     return false
   }
+  */
+
+  // Store analytics locally only for now
+  await storeAnalyticsLocally(event)
+  return true
 }
 
 /**
@@ -675,9 +678,8 @@ async function queueAnalyticsForRetry(event: AnalyticsEvent): Promise<void> {
  * Attempts to send queued events to the server with retry logic
  */
 export async function processPendingAnalytics(): Promise<void> {
-  // Skip processing in testing mode
-  if (TESTING_MODE) return
-
+  // Analytics processing disabled for now - keeping code for future use
+  /*
   try {
     // Get queued analytics
     const queuedEvents = await safeStorageOp(async () => {
@@ -708,7 +710,7 @@ export async function processPendingAnalytics(): Promise<void> {
         batch.map(async (event) => {
           try {
             // Don't use sendAnalyticsEvent to avoid infinite recursion
-            const endpoint = `${API_BASE_URL}/analytics`
+            const endpoint = `${API_BASE_URL}/api/analytics`
             return await sendWithRetry(endpoint, event, API_CONFIG.maxRetries)
           } catch (error) {
             return false
@@ -736,6 +738,8 @@ export async function processPendingAnalytics(): Promise<void> {
   } catch (error) {
     console.error("Error processing pending analytics:", error)
   }
+  */
+  console.log("Analytics processing is currently disabled")
 }
 
 /**
@@ -891,23 +895,25 @@ export const clearAllCollectedData = async (): Promise<boolean> => {
   }
 }
 
-/**
- * Sends collected data to the Vael AI Context Bank service
- * Main entry point for sending data to the server
- * @param data - The collected data to send
- * @returns Promise resolving to true if successful, false otherwise
- */
 export const sendCollectedData = async (
   data: CollectedData
 ): Promise<boolean> => {
   try {
-    // In testing mode, just store the data locally
-    if (TESTING_MODE) {
-      await safeStorageOp(
-        async () => storage.set(COLLECTED_DATA_KEY, data),
-        null
-      )
-      return true
+    // Check if current data size exceeds the maximum limit
+    const currentData = await safeStorageOp(
+      async () => storage.get<CollectedData>(COLLECTED_DATA_KEY),
+      null
+    )
+    if (currentData) {
+      const currentDataSize = JSON.stringify(currentData).length
+      if (currentDataSize >= MAX_DATA_COLLECTION_BYTES) {
+        console.warn(
+          `Max data collection limit of ${MAX_DATA_COLLECTION_BYTES / (1024 * 1024)}MB reached. New data will not be saved.`
+        )
+        // Optionally, notify the background script or UI
+        // chrome.runtime.sendMessage({ type: "MAX_DATA_LIMIT_REACHED" });
+        return false // Indicate that data was not saved
+      }
     }
 
     // Process any pending data while we're at it
@@ -951,4 +957,81 @@ export function getPlatform(): string {
 
   // Default fallback
   return "Unknown"
+}
+
+/**
+ * Validates data collection for a URL against blacklist and size limits
+ * @param url - The URL to validate
+ * @param currentDataSize - Current total data size in bytes
+ * @returns Promise resolving to validation result
+ */
+export const validateDataCollection = async (
+  url: string,
+  currentDataSize: number = 0
+): Promise<{ allowed: boolean; reason?: string }> => {
+  try {
+    // Extract domain from URL
+    const domain = new URL(url).hostname
+
+    // Check if domain is blacklisted (strict enforcement)
+    if (PRIVACY_CONFIG.STRICT_BLACKLIST_ENFORCEMENT) {
+      const isBlacklisted = await isDomainBlacklisted(domain)
+      if (isBlacklisted) {
+        return {
+          allowed: false,
+          reason: `Domain ${domain} is blacklisted and data collection is disabled`
+        }
+      }
+    }
+
+    // Check for auto-blacklist patterns
+    if (PRIVACY_CONFIG.AUTO_BLACKLIST_SENSITIVE) {
+      const isSensitive = PRIVACY_CONFIG.SENSITIVE_PATTERNS.some((pattern) =>
+        pattern.test(domain)
+      )
+      if (isSensitive) {
+        return {
+          allowed: false,
+          reason: `Domain ${domain} matches sensitive pattern and data collection is disabled`
+        }
+      }
+    }
+
+    // Check data size limits
+    if (!DataSizeUtils.isWithinCollectionLimit(currentDataSize)) {
+      return {
+        allowed: false,
+        reason: `Data size limit reached (${DataSizeUtils.formatBytes(currentDataSize)}). Maximum ${DataSizeUtils.formatBytes(DATA_LIMITS.MAX_COLLECTION_SIZE_BYTES)} allowed.`
+      }
+    }
+
+    // Warn if approaching limit
+    if (DataSizeUtils.isApproachingLimit(currentDataSize)) {
+      console.warn(
+        `Approaching data size limit: ${DataSizeUtils.formatBytes(currentDataSize)} / ${DataSizeUtils.formatBytes(DATA_LIMITS.MAX_COLLECTION_SIZE_BYTES)}`
+      )
+    }
+
+    return { allowed: true }
+  } catch (error) {
+    console.error("Error validating data collection:", error)
+    return {
+      allowed: false,
+      reason: "Error validating data collection permissions"
+    }
+  }
+}
+
+/**
+ * Checks current data size and enforces limits
+ * @returns Promise resolving to current data size in bytes
+ */
+export const getCurrentDataSize = async (): Promise<number> => {
+  try {
+    const data = await getAllCollectedData()
+    return JSON.stringify(data).length
+  } catch (error) {
+    console.error("Error getting current data size:", error)
+    return 0
+  }
 }

@@ -1,43 +1,57 @@
 {
-  "name": "lens-view",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "pnpx prettier --write --log-level=silent . && next build --turbopack",
-    "dev": "next dev --turbopack",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "@t3-oss/env-nextjs": "^0.12.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^0.511.0",
-    "next": "^15.3.2",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "tailwind-merge": "^3.3.0",
-    "zod": "^3.24.2"
-  },
-  "devDependencies": {
-    "@eslint/eslintrc": "^3.3.1",
-    "@tailwindcss/postcss": "^4.0.15",
-    "@types/node": "^20.14.10",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "eslint": "^9.23.0",
-    "eslint-config-next": "^15.3.2",
-    "postcss": "^8.5.3",
-    "prettier": "^3.5.3",
-    "prettier-plugin-tailwindcss": "^0.6.11",
-    "tailwindcss": "^4.0.15",
-    "tw-animate-css": "^1.3.0",
-    "typescript": "^5.8.2",
-    "typescript-eslint": "^8.27.0"
-  },
-  "ct3aMetadata": {
-    "initVersion": "7.39.3"
-  },
-  "packageManager": "pnpm@10.11.0"
+    "name": "lens-view",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "pnpx prettier --write --log-level=silent . && next build --turbopack",
+        "dev": "next dev --turbopack",
+        "start": "next start",
+        "lint": "next lint"
+    },
+    "dependencies": {
+        "@ai-sdk/google": "^1.2.18",
+        "@radix-ui/react-alert-dialog": "^1.1.14",
+        "@radix-ui/react-progress": "^1.1.7",
+        "@radix-ui/react-separator": "^1.1.7",
+        "@radix-ui/react-slot": "^1.2.3",
+        "@radix-ui/react-tooltip": "^1.2.7",
+        "@t3-oss/env-nextjs": "^0.12.0",
+        "ai": "^4.3.16",
+        "class-variance-authority": "^0.7.1",
+        "clsx": "^2.1.1",
+        "jsonwebtoken": "^9.0.2",
+        "lucide-react": "^0.511.0",
+        "mongodb": "^6.16.0",
+        "next": "^15.3.2",
+        "next-themes": "^0.4.6",
+        "react": "^19.1.0",
+        "react-dom": "^19.1.0",
+        "react-icons": "^5.5.0",
+        "recharts": "^2.15.3",
+        "sonner": "^2.0.3",
+        "tailwind-merge": "^3.3.0",
+        "zod": "^3.24.2"
+    },
+    "devDependencies": {
+        "@eslint/eslintrc": "^3.3.1",
+        "@tailwindcss/postcss": "^4.0.15",
+        "@types/jsonwebtoken": "^9.0.9",
+        "@types/node": "^20.14.10",
+        "@types/react": "^19.1.0",
+        "@types/react-dom": "^19.1.0",
+        "eslint": "^9.23.0",
+        "eslint-config-next": "^15.3.2",
+        "postcss": "^8.5.3",
+        "prettier": "^3.5.3",
+        "prettier-plugin-tailwindcss": "^0.6.11",
+        "tailwindcss": "^4.0.15",
+        "tw-animate-css": "^1.3.0",
+        "typescript": "^5.8.2",
+        "typescript-eslint": "^8.27.0"
+    },
+    "ct3aMetadata": {
+        "initVersion": "7.39.3"
+    },
+    "packageManager": "pnpm@10.11.0"
 }

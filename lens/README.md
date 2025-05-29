@@ -1,102 +1,144 @@
-# Vael Context Bank
+# 🔍 lens Browser Extension
 
-The Vael Context Bank is a browser extension that securely collects and organizes browsing data to provide context for AI agents. This extension helps users connect their browsing behavior with developers building intelligent agents, enabling more personalized and contextually aware AI assistance.
+Privacy-first browser extension that collects browsing behavior data locally for analysis on the lens platform.
 
-## Key Features
+## 🚀 Quick Start
 
-- **Comprehensive Data Collection**: Captures page metadata, user interactions, device information, and page content
-- **Domain-Specific Intelligence**: Special handling for e-commerce, travel, and productivity websites
-- **Privacy-First Design**: Granular controls for what data gets collected, with domain blacklisting
-- **Real-Time Indication**: Visual feedback on when data is being collected
-- **Transparent and Open Source**: Fully inspectable code for security and privacy
+```bash
+# Install dependencies
+pnpm install
 
-## Installation
+# Start development
+pnpm dev
+
+# Build for production
+pnpm build
+
+# Package for Chrome Web Store
+pnpm package
+```
+
+## 🛠️ Tech Stack
+
+- **Framework**: [Plasmo](https://docs.plasmo.com/) - Modern browser extension framework
+- **Frontend**: React 18 + TypeScript
+- **Styling**: Tailwind CSS + Radix UI components
+- **Storage**: Chrome Storage API
+- **Build**: Parcel (via Plasmo)
+
+## 📁 Project Structure
+
+```
+src/
+├── components/          # React components
+│   └── ui/             # Reusable UI components
+├── tabs/               # Extension popup and pages
+├── config/             # Configuration files
+├── lib/                # Utility libraries
+├── types/              # TypeScript type definitions
+└── utils/              # Helper functions
+    └── collectors/     # Data collection utilities
+```
+
+## 🔧 Development
+
+### Environment Setup
+
+Create `.env.local`:
+
+```bash
+# API Configuration
+PLASMO_PUBLIC_USE_LOCAL_API=true # true for local API URL, false for production API URL (lens.vael.ai)
+```
+
+### Available Scripts
+
+```bash
+pnpm dev          # Start development mode with hot reload
+pnpm build        # Build production version
+pnpm package      # Create distributable package
+```
+
+### Extension Architecture
+
+- **Background Script**: Handles cross-tab data aggregation
+- **Content Scripts**: Collect interaction data from web pages
+- **Popup**: User interface for settings and status
+- **Options Page**: Detailed configuration interface
+
+## 🔒 Privacy Features
+
+- **Local Storage**: All data stored locally until user initiates report
+- **Smart Filtering**: Excludes sensitive domains (banking, etc.)
+- **User Control**: Master toggle and granular privacy controls
+- **No Tracking**: Zero external analytics or tracking
+
+## 📊 Data Collection
+
+The extension collects:
+
+- **Website Metadata**: Domain, page titles, categories
+- **Interaction Patterns**: Clicks, scrolls, navigation
+- **Session Data**: Time spent, tab management
+- **Engagement Metrics**: Focus time, scroll depth
+
+All data collection respects user privacy settings and browser permissions.
+
+## 🔗 API Integration
+
+Communicates with lens-view platform:
+
+- **Report Generation**: Send data for AI analysis
+- **Authentication**: Secure user identification
+- **Progress Updates**: Real-time processing status
+
+## 🧩 Key Components
+
+- **DataCollector**: Core data aggregation logic
+- **PrivacyManager**: User consent and filtering
+- **StorageManager**: Chrome storage abstraction
+- **APIClient**: Platform communication layer
+
+## 🛡️ Permissions
+
+Required Chrome permissions:
+
+- `storage` - Local data persistence
+- `activeTab` - Current tab access for data collection
+- `tabs` - Tab management tracking
+- `host_permissions` - Website interaction monitoring
+
+## 🚀 Deployment
 
 ### Development Build
 
-1. Clone this repository
-2. Install dependencies:
-   ```
-   pnpm install
-   ```
-3. **Important**: Add icon files to the `assets` directory:
-   - Create `icon.png` as the main extension icon
-   - For status indicators (optional), create `idle.png`, `collecting.png`, and `disabled.png`
-4. Run the development build:
-   ```
-   pnpm dev
-   ```
-5. Load the extension in Chrome:
-   - Navigate to `chrome://extensions/`
-   - Enable "Developer mode"
-   - Click "Load unpacked"
-   - Select the `build/chrome-mv3-dev` directory
+```bash
+pnpm build
+# Load unpacked extension from build/ directory
+```
 
-### Production Build
+### Production Release
 
-1. Ensure icon files are added to the `assets` directory
-2. Build the extension:
-   ```
-   pnpm build
-   ```
-3. Package it:
-   ```
-   pnpm package
-   ```
-4. The packaged extension will be in the `build/` directory
+```bash
+pnpm package
+# Upload .zip file to Chrome Web Store
+```
 
-## Usage
+## 🤝 Contributing
 
-1. **Configure Data Collection**:
+1. Follow React/TypeScript best practices
+2. Use Tailwind for styling
+3. Maintain privacy-first principles
+4. Test across multiple browsers
+5. Update type definitions as needed
 
-   - Open the extension popup by clicking its icon
-   - Toggle which types of data you want to collect
-   - Add domains to the blacklist to prevent data collection on specific sites
+## 📚 Resources
 
-2. **Monitor Collection Status**:
+- [Plasmo Documentation](https://docs.plasmo.com/)
+- [Chrome Extension APIs](https://developer.chrome.com/docs/extensions/)
+- [React Documentation](https://react.dev/)
+- [Tailwind CSS](https://tailwindcss.com/)
 
-   - The extension badge shows the current collection status:
-     - (No badge): Ready to collect (idle)
-     - "REC" badge (green): Actively collecting data
-     - "OFF" badge (gray): Collection disabled for this site
+---
 
-3. **Detailed Settings**:
-   - Access full configuration through the options page
-   - Right-click the extension icon and select "Options"
-   - Adjust advanced settings and view privacy information
-
-## Privacy and Data Control
-
-Vael Context Bank puts you in control of your data:
-
-- All data collection can be toggled on/off
-- Sensitive domains are blacklisted by default
-- You can add any domain to the blacklist
-- All data is encrypted during transmission
-- No data is stored locally other than your preferences
-
-## Developer Integration
-
-Vael Context Bank is designed to work with the Vael AI platform, providing context to AI agents that have been granted access by the user.
-
-For integration details, visit [Vael AI Developer Documentation](https://vael.ai/docs).
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-Distributed under the MIT License. See `LICENSE` for more information.
-
-## Contact
-
-Vael AI Team - [contact@vael.ai](mailto:contact@vael.ai)
-
-Project Link: [https://github.com/vael-ai/context-bank-extension](https://github.com/vael-ai/context-bank-extension)
+**Part of the [lens platform](../README.md) - Built by [Vael AI](https://vael.ai)**

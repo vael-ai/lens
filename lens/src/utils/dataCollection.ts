@@ -17,6 +17,7 @@ import { collectDomainSpecificData } from "./collectors/domain-specific"
 import { collectUserInteractions } from "./collectors/interactions"
 import { collectPageMetadata } from "./collectors/metadata"
 import { generateUUID, isValidUrl } from "./helpers"
+import { checkDataSizeAndNotify, resetNotificationState } from "./notifications"
 import {
   getUserConfig,
   getUserId,
@@ -79,11 +80,12 @@ const getUrlKey = (url: string, includePath = true): string => {
  * @returns A promise resolving to the current collected data object, or null if not found
  */
 export const getCollectedData = async (): Promise<CollectedData | null> => {
-  return safeStorageOperation(
+  const result = await safeStorageOperation(
     async () => storage.get<CollectedData>(COLLECTED_DATA_KEY),
     null,
     "Error getting collected data"
   )
+  return result ?? null
 }
 
 /**
@@ -168,6 +170,26 @@ export const saveCollectedData = async (data: CollectedData): Promise<void> => {
 }
 
 /**
+ * Saves collected data and triggers notification checks for data size limits
+ * @param data The data to save
+ */
+export const saveCollectedDataWithNotification = async (
+  data: CollectedData
+): Promise<void> => {
+  // Save the data first
+  await saveCollectedData(data)
+
+  // Calculate current data size and check for notifications
+  try {
+    const currentSize = JSON.stringify(data).length
+    await checkDataSizeAndNotify(currentSize)
+  } catch (error) {
+    console.error("Error checking data size for notifications:", error)
+    // Don't fail the save operation if notifications fail
+  }
+}
+
+/**
  * Updates the website data in the collected data
  * @param url The URL of the website
  * @param updateFn Function to update the website data
@@ -218,8 +240,8 @@ export const updateWebsiteData = async (
     // Update last updated timestamp
     data.lastUpdated = Date.now()
 
-    // Save data
-    await saveCollectedData(data)
+    // Save data with notification check
+    await saveCollectedDataWithNotification(data)
   } catch (error) {
     console.error("Error updating website data:", error)
   }
@@ -397,7 +419,7 @@ export const updateInteractions = async (
         if (interaction.details.elementPath) {
           // Check if we already have this element path
           const existingElement = existingInteraction.targetElements.find(
-            (el) => el.elementPath === interaction.details.elementPath
+            (el) => el.elementPath === interaction?.details?.elementPath
           )
 
           if (existingElement) {
@@ -691,6 +713,10 @@ export const clearCollectedData = async (): Promise<boolean> => {
     }
 
     await saveCollectedData(emptyData)
+
+    // Reset notification state when data is cleared
+    await resetNotificationState()
+
     return true
   } catch (error) {
     console.error("Error clearing collected data:", error)

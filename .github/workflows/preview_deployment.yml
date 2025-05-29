@@ -1,0 +1,61 @@
+name: Lint | Build | Deploy to Preview
+
+on:
+    push:
+        branches-ignore:
+            - main
+        paths:
+            - "lens-view/**"
+
+env:
+    NODE_LTS_VERSION: 22
+    VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+    VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    MONGODB_URI: ${{ secrets.MONGODB_URI }}
+    GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+    INTERNAL_JWT_SECRET: ${{ secrets.INTERNAL_JWT_SECRET }}
+    USE_LOCAL_API: ${{ secrets.USE_LOCAL_API }}
+
+jobs:
+    lint_build:
+        name: Lint and Build
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: ./lens-view
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Install pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  package_json_file: lens-view/package.json
+                  run_install: false
+
+            - name: Setup Node v${{ env.NODE_LTS_VERSION }}
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ env.NODE_LTS_VERSION }}
+                  cache: pnpm
+                  cache-dependency-path: ./lens-view/pnpm-lock.yaml
+
+            - name: Install Dependencies
+              run: |
+                  echo "Installing Dependencies..."
+                  pnpm install --frozen-lockfile
+
+            - name: Pull Vercel Environment Information
+              run: |
+                  pnpx vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+            - name: Build Project
+              run: |
+                  echo "Building..."
+                  pnpx vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+            - name: Deploy Project to Preview
+              run: |
+                  echo "🎉 Deploying..."
+                  pnpx vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} --no-wait

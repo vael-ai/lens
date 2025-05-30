@@ -1343,6 +1343,15 @@ function OptionsPage() {
             vael
           </a>{" "}
           v{packageInfo.version}
+          <div className="mt-2">
+            <a
+              href="https://lens.vael.ai/legal/privacy-policy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-purple-600 underline hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300">
+              Privacy Policy
+            </a>
+          </div>
         </div>
       </div>
     </div>

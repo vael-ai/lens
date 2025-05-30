@@ -37,6 +37,8 @@ src/
 │   │   ├── submit-data/   # Data submission endpoint
 │   │   ├── internal/      # Internal processing
 │   │   └── reports/       # Report management
+│   ├── legal/             # Legal pages
+│   │   └── privacy-policy/ # Privacy policy page
 │   └── reports/           # Report pages
 ├── components/            # React components
 │   ├── ui/               # Reusable UI components

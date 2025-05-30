@@ -863,23 +863,23 @@ function IndexPopup(): JSX.Element {
             </div>
 
             {/* Data Collection Agreement Checkbox */}
-            <div className="flex items-start space-x-3 p-3 bg-slate-50 dark:bg-slate-700/30 rounded-md border border-slate-200 dark:border-slate-600/30">
+            <div className="flex items-start p-3 space-x-3 border rounded-md bg-slate-50 dark:bg-slate-700/30 border-slate-200 dark:border-slate-600/30">
               <input
                 type="checkbox"
                 id="dataCollectionAgreement"
                 checked={dataCollectionAgreed}
                 onChange={(e) => setDataCollectionAgreed(e.target.checked)}
-                className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 border-purple-300 rounded transition-colors"
+                className="w-4 h-4 mt-1 text-purple-600 transition-colors border-purple-300 rounded focus:ring-purple-500"
               />
               <label
                 htmlFor="dataCollectionAgreement"
-                className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed cursor-pointer">
+                className="text-xs leading-relaxed cursor-pointer text-slate-600 dark:text-slate-300">
                 I agree to the data collection methods as described in the{" "}
                 <a
                   href="https://github.com/vaelai/lens"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-purple-600 dark:text-purple-400 hover:underline font-medium">
+                  className="font-medium text-purple-600 dark:text-purple-400 hover:underline">
                   GitHub repository
                 </a>
                 . Data is stored locally and only shared when I generate
@@ -1494,10 +1494,6 @@ function IndexPopup(): JSX.Element {
           </TabsContent>
         </Tabs>
         {/* Footer */}
-        {/*
-          Display the extension version from package.json. This works because 'resolveJsonModule' is enabled in tsconfig.json and the bundler supports importing JSON. 
-          Note: For browser extensions, you can also use chrome.runtime.getManifest().version for the actual installed version. 
-        */}
         <div className="mt-auto pt-2 text-center text-[10px] border-t border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
           lens by{" "}
           <a
@@ -1513,6 +1509,15 @@ function IndexPopup(): JSX.Element {
             title="Double-click to test notifications (dev only)">
             v{packageInfo.version}
           </span>
+          <div className="mt-1">
+            <a
+              href="https://lens.vael.ai/legal/privacy-policy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-purple-600 underline hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300">
+              Privacy Policy
+            </a>
+          </div>
         </div>
       </div>
       {/* End of main content div */}

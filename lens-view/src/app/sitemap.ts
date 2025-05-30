@@ -10,6 +10,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
             changeFrequency: "daily",
             priority: 1,
         },
+        {
+            url: `${baseUrl}/legal/privacy-policy`,
+            lastModified: new Date(),
+            changeFrequency: "monthly",
+            priority: 0.5,
+        },
         // Note: /reports/[reportId] pages are private and intentionally excluded from sitemap
     ];
 }

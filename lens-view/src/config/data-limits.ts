@@ -28,13 +28,13 @@ export const AI_CONFIG = {
     MAX_AI_TOKENS: 800000, // ~500KB of JSON data
 
     /** Maximum output tokens from AI */
-    MAX_OUTPUT_TOKENS: 32000,
+    MAX_OUTPUT_TOKENS: 64000,
 
     /** Whether to enable full data transparency mode */
     FULL_TRANSPARENCY_MODE: true,
 
     /** Temperature setting for AI generation */
-    AI_TEMPERATURE: 0.2,
+    AI_TEMPERATURE: 0.1,
 } as const;
 
 /**

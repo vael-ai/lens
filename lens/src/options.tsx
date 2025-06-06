@@ -1,6 +1,8 @@
 import { githubLightTheme, JsonEditor } from "json-edit-react"
 import { useEffect, useState } from "react"
 
+import { Storage } from "@plasmohq/storage"
+
 import packageInfo from "../package.json"
 import { Header } from "./components"
 import {
@@ -14,6 +16,7 @@ import { Input } from "./components/ui/input"
 import { Separator } from "./components/ui/separator"
 import { Switch } from "./components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs"
+import { DATA_LIMITS, DataSizeUtils } from "./config/data-limits"
 import type { CollectedData, WebsiteData } from "./types/data"
 import {
   clearAllCollectedData,
@@ -21,6 +24,7 @@ import {
   getAllCollectedData,
   sendAnalyticsEvent
 } from "./utils/api"
+import { DATA_SIZE_THRESHOLD_KB, USER_EMAIL_KEY } from "./utils/constants"
 import { createAnalyticsEvent } from "./utils/dataCollection"
 import { getSettingLabel } from "./utils/labels"
 import {
@@ -58,6 +62,8 @@ function OptionsPage() {
   const [searchText, setSearchText] = useState("")
   const [carouselIndex, setCarouselIndex] = useState(0)
   const [hasEmail, setHasEmail] = useState(false)
+  const [isGeneratingReport, setIsGeneratingReport] = useState<boolean>(false)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
 
   // Define the boolean config keys to display in settings with color coding (matching popup.tsx)
   const BOOLEAN_USER_CONFIG_KEYS = [
@@ -82,6 +88,13 @@ function OptionsPage() {
       // Check if user has a valid email
       const emailValid = await hasValidUserEmail()
       setHasEmail(emailValid)
+
+      // Load email from storage
+      const storage = new Storage()
+      const storedEmail = await storage.get<string>(USER_EMAIL_KEY)
+      if (storedEmail) {
+        setUserEmail(storedEmail)
+      }
     } catch (error) {
       console.error("Error loading config:", error)
       setMessage({ text: "Failed to load configuration", type: "error" })
@@ -404,6 +417,12 @@ function OptionsPage() {
     return exactSize
   }
 
+  // Calculate compact data size (matches popup.tsx and backend validation)
+  const calculateCompactDataSize = (data: CollectedData | null): number => {
+    if (!data) return 0
+    return JSON.stringify(data).length
+  }
+
   // Count websites and calculate data size
   const getDataStats = () => {
     if (!collectedData) {
@@ -416,15 +435,16 @@ function OptionsPage() {
     }
 
     const websiteCount = Object.keys(collectedData.websites || {}).length
-    const exactExportSizeInBytes = calculateExactExportSize(collectedData)
-    const dataSizeFormatted = (exactExportSizeInBytes / 1024).toFixed(2) + " KB"
+    // Use compact data size to match popup.tsx display and backend validation
+    const compactDataSizeInBytes = calculateCompactDataSize(collectedData)
+    const dataSizeFormatted = (compactDataSizeInBytes / 1024).toFixed(2) + " KB"
     const lastUpdatedTimestamp = collectedData.lastUpdated || Date.now()
     const lastUpdatedFormatted = new Date(lastUpdatedTimestamp).toLocaleString()
 
     return {
       websiteCount,
       dataSize: dataSizeFormatted,
-      dataSizeInBytes: exactExportSizeInBytes,
+      dataSizeInBytes: compactDataSizeInBytes,
       lastUpdated: lastUpdatedFormatted
     }
   }
@@ -438,6 +458,192 @@ function OptionsPage() {
       .slice(0, 6)
   }
 
+  // Data validation for report generation (matches popup.tsx logic)
+  const validateDataForReport = (
+    dataSize: number
+  ): { valid: boolean; reason?: string } => {
+    if (!DataSizeUtils.meetsReportMinimum(dataSize)) {
+      return {
+        valid: false,
+        reason: `Insufficient data for report generation. You need at least ${DataSizeUtils.formatBytes(DATA_LIMITS.MIN_REPORT_SIZE_BYTES)} of browsing data.`
+      }
+    }
+
+    if (!DataSizeUtils.isWithinCollectionLimit(dataSize)) {
+      return {
+        valid: false,
+        reason: `Data size exceeds maximum limit. Maximum ${DataSizeUtils.formatBytes(DATA_LIMITS.MAX_COLLECTION_SIZE_BYTES)} allowed.`
+      }
+    }
+
+    return { valid: true }
+  }
+
+  // Determine API and Report URLs based on environment variable (matches popup.tsx)
+  const USE_LOCAL_API =
+    (process.env.PLASMO_PUBLIC_USE_LOCAL_API || "").toString().toLowerCase() ===
+    "true"
+  const API_BASE_URL = USE_LOCAL_API
+    ? "http://localhost:3000"
+    : "https://lens.vael.ai"
+  const REPORTS_BASE_URL = USE_LOCAL_API
+    ? "http://localhost:3000"
+    : "https://lens.vael.ai"
+
+  // Handle report generation (copied from popup.tsx)
+  const handleGenerateReport = async () => {
+    if (!userEmail) {
+      setMessage({
+        text: "Email not found. Please complete onboarding in the popup.",
+        type: "error"
+      })
+      return
+    }
+
+    // Do a live check - fetch fresh data from storage (no cache)
+    let freshData: CollectedData
+    try {
+      freshData = await getAllCollectedData()
+      setCollectedData(freshData) // Update local state too
+    } catch (error) {
+      console.error("Error loading fresh data for report generation:", error)
+      setMessage({
+        text: "Failed to load current data. Please try again.",
+        type: "error"
+      })
+      return
+    }
+
+    // Calculate compact data size (same method as backend validation)
+    const compactDataSize = calculateCompactDataSize(freshData)
+    const formattedDataSize = calculateExactExportSize(freshData)
+
+    console.log(
+      `[Report Generation] Data sizes - Compact: ${(compactDataSize / 1024).toFixed(2)}KB (used for validation), Formatted: ${(formattedDataSize / 1024).toFixed(2)}KB (shown in UI)`
+    )
+    console.log(
+      `[Report Generation] Using API: ${USE_LOCAL_API ? "LOCAL" : "PRODUCTION"} - ${API_BASE_URL}`
+    )
+
+    // Use the compact size for validation (matches backend logic)
+    const validation = validateDataForReport(compactDataSize)
+    if (!validation.valid) {
+      setMessage({
+        text: validation.reason || "Data validation failed",
+        type: "error"
+      })
+      return
+    }
+
+    // Set loading state and disable button immediately
+    setIsGeneratingReport(true)
+
+    const reportId = crypto.randomUUID()
+
+    // Always submit data to server (development or production)
+    try {
+      const serverUrl = USE_LOCAL_API
+        ? "http://localhost:3000"
+        : "https://lens.vael.ai"
+      console.log(
+        `Submitting data to ${USE_LOCAL_API ? "development" : "production"} server for report generation:`,
+        reportId
+      )
+
+      const response = await fetch(`${serverUrl}/api/submit-data`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          reportId: reportId,
+          email: userEmail,
+          userData: freshData // Send the fresh data object
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Handle cached report response
+        if (result.cached) {
+          console.log("Using cached report:", result.reportId)
+          const reportsUrl = USE_LOCAL_API
+            ? "http://localhost:3000"
+            : "https://lens.vael.ai"
+          chrome.tabs.create({
+            url: `${reportsUrl}/reports/${result.reportId}?email=${encodeURIComponent(userEmail)}`
+          })
+          setIsGeneratingReport(false)
+          setMessage({
+            text: "Report generated successfully! Opening in new tab.",
+            type: "success"
+          })
+          setTimeout(() => setMessage(null), 3000)
+          return
+        }
+
+        const reportsUrl = USE_LOCAL_API
+          ? "http://localhost:3000"
+          : "https://lens.vael.ai"
+        chrome.tabs.create({
+          url: `${reportsUrl}/reports/${reportId}?email=${encodeURIComponent(userEmail)}`
+        })
+
+        setMessage({
+          text: "Report generation started! Opening in new tab.",
+          type: "success"
+        })
+        setTimeout(() => setMessage(null), 3000)
+        // Loading state will be cleared when user navigates away or closes page
+        setIsGeneratingReport(false)
+      } else {
+        console.error("Failed to submit data:", result.error)
+        setIsGeneratingReport(false) // Reset loading state on error
+
+        // Handle specific error types
+        if (response.status === 401) {
+          setMessage({
+            text: "Authentication failed. Please update the extension or contact support.",
+            type: "error"
+          })
+        } else if (result.error) {
+          // Show backend error details if present
+          let errorMsg = `Failed to submit data for report: ${result.error}`
+          if (result.minimumWaitTime)
+            errorMsg += `\nMinimum wait time: ${result.minimumWaitTime}`
+          if (result.currentDataSize)
+            errorMsg += `\nCurrent data size: ${result.currentDataSize}`
+          if (result.previousDataSize)
+            errorMsg += `\nPrevious data size: ${result.previousDataSize}`
+          if (result.similarity)
+            errorMsg += `\nSimilarity: ${result.similarity}`
+          if (result.tip) errorMsg += `\nTip: ${result.tip}`
+          setMessage({ text: errorMsg, type: "error" })
+        } else {
+          setMessage({
+            text: "Failed to submit data for report: Unknown error",
+            type: "error"
+          })
+        }
+      }
+    } catch (error) {
+      console.error("Error generating report:", error)
+      setIsGeneratingReport(false) // Reset loading state on error
+      if (error instanceof Error) {
+        setMessage({
+          text: `An error occurred while generating the report: ${error.message}`,
+          type: "error"
+        })
+      } else {
+        setMessage({
+          text: "An unknown error occurred while generating the report.",
+          type: "error"
+        })
+      }
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-100 dark:from-slate-800 dark:via-purple-900/20 dark:to-indigo-900/30 flex items-center justify-center p-4">
@@ -448,8 +654,12 @@ function OptionsPage() {
     )
   }
 
-  const { websiteCount, dataSize, lastUpdated } = getDataStats()
+  const { websiteCount, dataSize, dataSizeInBytes, lastUpdated } =
+    getDataStats()
   const recentWebsites = getRecentWebsites()
+
+  // Check if report is ready (matches popup.tsx logic)
+  const isReportReady = dataSizeInBytes >= DATA_LIMITS.MIN_REPORT_SIZE_BYTES
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-100 dark:from-slate-800 dark:via-purple-900/20 dark:to-indigo-900/30 transition-all duration-300">
@@ -934,6 +1144,128 @@ function OptionsPage() {
                 </div>
               </div>
               <div className="p-6">
+                {/* Report Generation Section */}
+                <div className="p-4 mb-6 border rounded-lg bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50">
+                  {!isReportReady ? (
+                    <div className="flex items-center mb-3 text-orange-600 dark:text-orange-400">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-5 h-5 mr-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <p className="font-medium">
+                        Collect at least {DATA_SIZE_THRESHOLD_KB}KB of data to
+                        generate a report
+                      </p>
+                    </div>
+                  ) : !userEmail ? (
+                    <div className="flex items-center mb-3 text-amber-600 dark:text-amber-400">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-5 h-5 mr-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <p className="font-medium">
+                        Email required for report generation. Please complete
+                        onboarding in the popup.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center mb-3 text-green-600 dark:text-green-400">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="w-5 h-5 mr-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <p className="font-medium">Report is ready to generate</p>
+                    </div>
+                  )}
+
+                  <Button
+                    onClick={handleGenerateReport}
+                    className="w-full h-12 text-base font-medium bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 dark:from-purple-500 dark:to-indigo-500 dark:hover:from-purple-600 dark:hover:to-indigo-600 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-md text-white disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none mb-4"
+                    disabled={
+                      dataLoading ||
+                      !isReportReady ||
+                      isGeneratingReport ||
+                      !userEmail
+                    }>
+                    {isGeneratingReport ? (
+                      <span className="flex items-center">
+                        <svg
+                          className="w-5 h-5 mr-2 -ml-1 text-white animate-spin"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24">
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Generating Report...
+                      </span>
+                    ) : dataLoading ? (
+                      <span className="flex items-center">
+                        <svg
+                          className="w-5 h-5 mr-2 -ml-1 text-white animate-spin"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24">
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Loading Data...
+                      </span>
+                    ) : !userEmail ? (
+                      "Complete Onboarding Required"
+                    ) : !isReportReady ? (
+                      "Collect More Data"
+                    ) : (
+                      "Generate AI Report"
+                    )}
+                  </Button>
+                </div>
+
                 <div className="flex flex-wrap gap-3 mb-6">
                   <Button
                     onClick={handleCopyToClipboard}

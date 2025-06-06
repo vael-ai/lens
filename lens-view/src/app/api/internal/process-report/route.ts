@@ -34,6 +34,20 @@ function calculateDataSimilarity(data1: any, data2: any): number {
     return commonDomains.length / totalUniqueDomains;
 }
 
+// Citation schema for data source references
+const citationSchema = z.object({
+    sourceId: z.string(), // Unique ID for the data source
+    domainOrFeature: z.string(), // Domain or feature this data comes from
+    dataType: z.string(), // Type of data (e.g., interaction, metadata, pattern)
+    confidence: z.number().optional(), // Confidence score (0-1)
+    timeRangeStart: z.string().optional(), // ISO date string for data time range start
+    timeRangeEnd: z.string().optional(), // ISO date string for data time range end
+    // NEW: Actual data references for transparency
+    dataPath: z.string(), // JSON path to the data used (e.g., "websites.amazon.com.totalFocusTime")
+    rawDataValue: z.string().optional(), // The actual data value used (serialized as JSON string if complex)
+    calculation: z.string().optional(), // How this data was calculated/derived
+});
+
 // Report schema (reuse existing schema)
 const reportSchema = z.object({
     userProfileSummary: z.object({
@@ -76,6 +90,27 @@ const reportSchema = z.object({
         averageScrollDepth: z.number().optional(),
         averageInputFocusTimeMs: z.number().optional(),
     }),
+    keystrokeInsights: z
+        .object({
+            typingBehavior: z.object({
+                averageTypingSpeed: z.number(),
+                coolPersonalFacts: z.array(z.string()), // Specific, interesting facts about the user (e.g., "Loves Percy Jackson books", "Learning Spanish")
+                personalityIndicators: z.array(z.string()),
+                interestTopics: z.array(z.string()),
+            }),
+            searchPatterns: z.object({
+                searchFrequency: z.number(),
+                queryTypes: z.array(z.string()),
+                commonSearchTerms: z.array(z.string()),
+            }),
+            contentPreferences: z.object({
+                readingStyle: z.enum(["scanner", "thorough", "mixed"]),
+                engagementLevel: z.enum(["low", "moderate", "high"]),
+                informationSeeking: z.array(z.string()),
+            }),
+            citations: z.array(citationSchema).optional(),
+        })
+        .optional(),
     ecommerceInsights: z
         .object({
             topCategories: z.array(z.string()),
@@ -435,42 +470,33 @@ async function processReportInBackground(reportId: string, email: string, userDa
         const { object: report } = await generateObject({
             model,
             schema: reportSchema,
-            prompt: `You are a world-class digital behavior psychologist specializing in uncovering hidden patterns in browsing behavior. Analyze this data to reveal insights that will genuinely surprise users about their own digital habits.
-
-DATA PROFILE:
-- Dataset Size: ${optimizedAnalysisData.dataProfile.originalSize}
-- Domains Analyzed: ${optimizedAnalysisData.dataProfile.analyzedDomains}/${optimizedAnalysisData.dataProfile.totalDomains}
-- Active Days: ${optimizedAnalysisData.dataProfile.dataTimespan?.activeDays || "N/A"}
-- Total Browse Time: ${optimizedAnalysisData.dataProfile.dataTimespan?.totalBrowsingTime || "N/A"} minutes
-
-ANALYSIS OBJECTIVES - THINK LIKE A DIGITAL PSYCHOLOGIST:
-1. BEHAVIORAL PATTERNS: Uncover subconscious habits and timing patterns
-2. PERSONALITY INSIGHTS: Infer cognitive styles and decision-making preferences
-3. PRODUCTIVITY PSYCHOLOGY: Analyze focus patterns and cognitive load indicators
-4. SURPRISE INSIGHTS: Discover patterns users likely aren't aware of
-
-CHART DATA REQUIREMENTS:
-- sessionActivityOverTime: Use dates between ${optimizedAnalysisData.dataProfile.dataTimespan?.earliestDate || "N/A"} and ${optimizedAnalysisData.dataProfile.dataTimespan?.latestDate || "N/A"} ONLY
-- interactionTypeBreakdown: Use "Click", "Scroll", "Hover", "Input", "Selection", "Navigation", "Focus", "Typing" (NEVER numbers)
-- visitCountByCategory: Use "Shopping", "Productivity", "News & Media", "Travel", "Entertainment", "Social Media", "Education", "Gaming" (NEVER numbers)
-- focusTimeByDomain: Use actual domain names from data
-
-PERSONALIZED INSIGHTS:
-- ecommerceInsights: ONLY for actual shopping domains (amazon.com, shop.*, store.*)
-- travelInsights: ONLY for actual travel domains (booking.com, expedia.com, flights.*)
-- Analyze shoppingBehavior, purchaseIntent, travelStyle, researchBehavior based on actual patterns
-- DO NOT generate insights for non-relevant domains
-
-DOMAIN RECATEGORIZATION:
-Actively analyze all domains for potential shopping/travel/productivity patterns by examining:
-- Domain patterns and user interaction behaviors
-- Time spent and engagement levels
+            prompt: `You are a digital behavior analyst specializing in extracting personal insights from browsing data. Analyze this data to create surprising, personalized insights.
 
 CRITICAL REQUIREMENTS:
-- Use descriptive labels ONLY, NEVER numeric indices (0,1,2)
-- Use real dates from data collection period only
-- Generate insights that surprise users about their unconscious digital habits
-- Every insight must be backed by actual data from browsing history
+- Use descriptive labels ONLY (never numbers like 0,1,2)
+- Use real dates between ${optimizedAnalysisData.dataProfile.dataTimespan?.earliestDate || "N/A"} and ${optimizedAnalysisData.dataProfile.dataTimespan?.latestDate || "N/A"}
+- Generate insights that surprise users about their digital habits
+- Back every insight with actual data
+
+KEYSTROKE INSIGHTS - FOCUS ON COOL PERSONAL FACTS:
+When analyzing typing data (interactions.typing), extract SPECIFIC, INTERESTING personal facts that would be valuable for personalization:
+- coolPersonalFacts: Look for specific interests, hobbies, preferences (e.g., "Loves Percy Jackson books", "Learning Spanish", "Into cryptocurrency trading", "Planning wedding")
+- personalityIndicators: Communication style, decision-making patterns
+- interestTopics: Broad interest categories
+- searchPatterns: What they actively search for
+- contentPreferences: How they consume information
+
+CHART DATA LABELS:
+- interactionTypeBreakdown: "Click", "Scroll", "Hover", "Input", "Selection", "Navigation", "Focus", "Typing"
+- visitCountByCategory: "Shopping", "Productivity", "News & Media", "Travel", "Entertainment", "Social Media", "Education", "Gaming"
+- focusTimeByDomain: Use actual domain names from data
+
+PERSONALIZATION FOCUS:
+Extract facts that could enable:
+- Personalized product recommendations
+- Content suggestions
+- Interest-based targeting
+- Lifestyle insights
 
 BROWSING DATA:
 ${JSON.stringify(optimizedAnalysisData, null, 2)}`,
@@ -479,6 +505,57 @@ ${JSON.stringify(optimizedAnalysisData, null, 2)}`,
 
         // Stage 7: Processing AI results (88%)
         await updateProgress(88, "Processing AI results");
+
+        // Add citations for keystroke insights if they exist
+        if (report.keystrokeInsights) {
+            const generateCitation = (
+                sourceId: string,
+                domainOrFeature: string,
+                dataType: string,
+                dataPath: string,
+                rawDataValue: any,
+                calculation: string,
+                confidence = 0.85
+            ) => ({
+                sourceId,
+                domainOrFeature,
+                dataType,
+                confidence,
+                timeRangeStart: optimizedAnalysisData.dataProfile.dataTimespan?.earliestDate || undefined,
+                timeRangeEnd: optimizedAnalysisData.dataProfile.dataTimespan?.latestDate || undefined,
+                dataPath,
+                rawDataValue,
+                calculation,
+            });
+
+            // Generate citations for keystroke insights
+            report.keystrokeInsights.citations = [
+                generateCitation(
+                    "typing-behavior",
+                    "Typing Interaction Data",
+                    "keystroke",
+                    "websites.*.interactions.typing",
+                    null, // Will be populated from actual data if available
+                    "Analyzed typing speed, cool personal facts, and personality indicators from collected keystroke data"
+                ),
+                generateCitation(
+                    "search-patterns",
+                    "Search Field Analysis",
+                    "search",
+                    "websites.*.interactions.typing.searchQueries",
+                    null,
+                    "Extracted search frequency and query patterns from search field interactions"
+                ),
+                generateCitation(
+                    "content-preferences",
+                    "Content Engagement Analysis",
+                    "engagement",
+                    "websites.*.interactions.typing.contentAnalysis",
+                    null,
+                    "Inferred reading style and engagement level from typing patterns and content interaction data"
+                ),
+            ];
+        }
 
         // Small delay to show progress
         await new Promise((resolve) => setTimeout(resolve, 500));

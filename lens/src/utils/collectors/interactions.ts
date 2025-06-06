@@ -20,6 +20,7 @@ const CONFIG = {
   clickSampleRate: 0.5, // Only track 50% of clicks to reduce volume
   hoverMinTime: 1000, // Minimum hover time to track (ms)
   scrollDebounceTime: 500, // Debounce time for scroll events (ms)
+  typingDebounceTime: 2000, // Debounce time for typing events (ms)
   maxInteractionsPerType: 50, // Maximum interactions to track per type
   maxElements: 5 // Maximum number of elements to track per interaction
 }
@@ -39,7 +40,8 @@ export const collectUserInteractions = (
     scrolls: 0,
     hovers: 0,
     inputs: 0,
-    selects: 0
+    selects: 0,
+    typing: 0
   }
 
   /**
@@ -230,6 +232,118 @@ export const collectUserInteractions = (
     })
   }, 1000) // Throttle to avoid excessive tracking
 
+  const activeInputTimers = new Map<
+    HTMLElement,
+    { buffer: string; timer: NodeJS.Timeout }
+  >()
+
+  const handleTyping = (event: KeyboardEvent) => {
+    const target = event.target as HTMLInputElement | HTMLTextAreaElement
+    if (!target || !isFormElement(target) || target.type === "password") {
+      return
+    }
+
+    if (trackedInteractions.typing >= CONFIG.maxInteractionsPerType) {
+      return
+    }
+
+    const existingTimer = activeInputTimers.get(target)
+    if (existingTimer) {
+      clearTimeout(existingTimer.timer)
+    }
+
+    let currentBuffer = existingTimer?.buffer || ""
+
+    if (event.key === "Backspace") {
+      currentBuffer = currentBuffer.slice(0, -1)
+    } else if (event.key.length === 1) {
+      currentBuffer += event.key
+    }
+
+    const timer = setTimeout(() => {
+      const trimmedText = currentBuffer.trim()
+      if (trimmedText.length > 0 && isTextInteresting(trimmedText, target)) {
+        trackedInteractions.typing++
+        callback({
+          type: "typing",
+          timestamp: Date.now(),
+          url: window.location.href,
+          fieldName: target.name || target.id || "unknown",
+          typedText: trimmedText
+        })
+      }
+      activeInputTimers.delete(target)
+    }, CONFIG.typingDebounceTime)
+
+    activeInputTimers.set(target, { buffer: currentBuffer, timer })
+  }
+
+  /**
+   * Determines if a string of text is "interesting" enough to be collected.
+   * This helps filter out noise and focus on personality-relevant input.
+   * @param text The text to analyze.
+   * @param element The input element where the text was typed.
+   * @returns True if the text is deemed interesting, false otherwise.
+   */
+  const isTextInteresting = (
+    text: string,
+    element: HTMLInputElement | HTMLTextAreaElement
+  ): boolean => {
+    const lowerCaseText = text.toLowerCase()
+
+    // 1. Check for minimum length to avoid capturing trivial inputs.
+    if (text.length < 15) {
+      return false
+    }
+
+    // 2. Check for keywords that might indicate personal opinions, interests, or sentiments.
+    const keywords = [
+      "i think",
+      "i feel",
+      "i believe",
+      "my opinion",
+      "i like",
+      "i love",
+      "i hate",
+      "book",
+      "movie",
+      "music",
+      "art",
+      "game",
+      "restaurant",
+      "recipe",
+      "travel",
+      "question is",
+      "how to",
+      "what is",
+      "why is" // Common search patterns
+    ]
+
+    if (keywords.some((keyword) => lowerCaseText.includes(keyword))) {
+      return true
+    }
+
+    // 3. Check if the input element is likely a search bar.
+    const elementName = element.name.toLowerCase()
+    const elementId = element.id.toLowerCase()
+    const elementRole = element.getAttribute("role")?.toLowerCase()
+
+    if (
+      element.type === "search" ||
+      elementName.includes("search") ||
+      elementName.includes("query") ||
+      elementId.includes("search") ||
+      elementId.includes("query") ||
+      elementRole === "search" ||
+      elementRole === "searchbox"
+    ) {
+      return true
+    }
+
+    // If none of the above, we can consider it not interesting for now.
+    return false
+  }
+
   /**
    * Handles text selection events by tracking and reporting selection interactions
    */
@@ -256,31 +370,43 @@ export const collectUserInteractions = (
     })
   }
 
-  // Add event listeners
-  document.addEventListener("click", handleClick, { passive: true })
-  document.addEventListener("scroll", handleScroll, { passive: true })
-  document.addEventListener("mouseover", handleMouseover, { passive: true })
-  document.addEventListener("mouseout", handleMouseout, { passive: true })
-  document.addEventListener("input", handleInput as EventListener, {
-    passive: true
-  })
-  document.addEventListener("selectionchange", handleSelection, {
-    passive: true
-  })
+  // Set up event listeners
+  document.addEventListener("click", handleClick)
+  window.addEventListener("scroll", handleScroll, { passive: true })
+  document.addEventListener("mouseover", handleMouseover)
+  document.addEventListener("mouseout", handleMouseout)
+  document.addEventListener("selectionchange", handleSelection)
 
-  // Return cleanup function
-  return () => {
+  // Add listeners for form inputs and typing
+  document
+    .querySelectorAll("input, textarea, [contenteditable=true]")
+    .forEach((element) => {
+      element.addEventListener("input", handleInput)
+      element.addEventListener("keydown", handleTyping as EventListener)
+    })
+
+  const cleanup = () => {
     document.removeEventListener("click", handleClick)
-    document.removeEventListener("scroll", handleScroll)
+    window.removeEventListener("scroll", handleScroll)
     document.removeEventListener("mouseover", handleMouseover)
     document.removeEventListener("mouseout", handleMouseout)
-    document.removeEventListener("input", handleInput as EventListener)
     document.removeEventListener("selectionchange", handleSelection)
 
-    // Clear any pending timeouts
+    // Remove listeners for form inputs and typing
+    document
+      .querySelectorAll("input, textarea, [contenteditable=true]")
+      .forEach((element) => {
+        element.removeEventListener("input", handleInput)
+        element.removeEventListener("keydown", handleTyping as EventListener)
+      })
+
+    // Clear any pending hover timeouts
     hoverTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId))
     hoverTimeouts.clear()
   }
+
+  // Return cleanup function
+  return cleanup
 }
 
 /**

@@ -306,6 +306,17 @@ export const updateInteractions = async (
               }
             }
             break
+          case "typing":
+            if (interaction.typedText) {
+              updatedInteractions[type].typedText = [
+                {
+                  fieldName: interaction.fieldName || "unknown",
+                  text: interaction.typedText,
+                  timestamp: interaction.timestamp
+                }
+              ]
+            }
+            break
         }
       } else {
         // Update existing interaction
@@ -388,6 +399,19 @@ export const updateInteractions = async (
                 (stats.averageLength * (stats.count - 1) +
                   interaction.selectionLength) /
                 stats.count
+            }
+            break
+          case "typing":
+            if (interaction.typedText && existingInteraction.typedText) {
+              existingInteraction.typedText.push({
+                fieldName: interaction.fieldName || "unknown",
+                text: interaction.typedText,
+                timestamp: interaction.timestamp
+              })
+              if (existingInteraction.typedText.length > 20) {
+                existingInteraction.typedText =
+                  existingInteraction.typedText.slice(-20)
+              }
             }
             break
         }

@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { ReportCharts } from "@/components/report-charts";
 import { SocialShare } from "@/components/social-share";
 import { CitationLink } from "@/components/citation-link";
-import { AlertCircle, Brain, Clock, Mouse, RefreshCw, TrendingUp, FileText, Copy, Check } from "lucide-react";
+import { AlertCircle, Brain, Clock, Mouse, RefreshCw, TrendingUp, FileText, Copy, Check, Keyboard } from "lucide-react";
 import Link from "next/link";
 import { DataPoint } from "@/components/ui/data-point";
 import { EnhancedTooltip } from "@/components/ui/enhanced-tooltip";
@@ -90,6 +90,25 @@ interface Report {
             averageResearchDuration: number;
             informationSources: string[];
             comparisonPatterns: string;
+        };
+        citations: Citation[];
+    };
+    keystrokeInsights?: {
+        typingBehavior: {
+            averageTypingSpeed: number;
+            coolPersonalFacts: string[];
+            personalityIndicators: string[];
+            interestTopics: string[];
+        };
+        searchPatterns: {
+            searchFrequency: number;
+            queryTypes: string[];
+            commonSearchTerms: string[];
+        };
+        contentPreferences: {
+            readingStyle: "scanner" | "thorough" | "mixed";
+            engagementLevel: "low" | "moderate" | "high";
+            informationSeeking: string[];
         };
         citations: Citation[];
     };
@@ -1049,6 +1068,253 @@ export default function ReportPage() {
                                             Consistent patterns suggest well-established habits and predictable digital
                                             behavior.
                                         </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Keystroke Insights */}
+                {report.keystrokeInsights && (
+                    <Card className="mb-4 border-0 shadow-lg sm:mb-6 lg:mb-8 bg-gradient-to-br from-white to-indigo-50">
+                        <CardHeader className="pb-3 sm:pb-6">
+                            <CardTitle className="flex items-center space-x-2 text-lg sm:text-xl">
+                                <Keyboard className="w-4 h-4 text-indigo-600 sm:w-5 sm:h-5" />
+                                <span>Keystroke Insights</span>
+                                <EnhancedTooltip
+                                    title="Typing Pattern Analysis"
+                                    content="Analysis of your typing behavior, search patterns, and content engagement based on keystroke data collected from form inputs and search fields."
+                                    variant="trend"
+                                    side="right"
+                                    align="start"
+                                />
+                            </CardTitle>
+                            <p className="text-sm text-gray-600">
+                                Discover your digital personality through your typing patterns and content preferences
+                            </p>
+                        </CardHeader>
+                        <CardContent className="p-4 sm:p-6">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                {/* Typing Behavior */}
+                                <div className="p-4 border border-indigo-200 rounded-lg bg-gradient-to-br from-indigo-50 to-purple-50">
+                                    <div className="flex items-center mb-3">
+                                        <h4 className="flex items-center font-medium text-indigo-800">
+                                            ⌨️ Typing Style
+                                            <EnhancedTooltip
+                                                title="Typing Behavior Analysis"
+                                                content="Analysis of your typing speed, common words, and personality indicators extracted from your text input patterns."
+                                                dataSource={report.keystrokeInsights.citations?.[0]?.domainOrFeature}
+                                                confidence={report.keystrokeInsights.citations?.[0]?.confidence}
+                                                calculation={report.keystrokeInsights.citations?.[0]?.calculation}
+                                                variant="data"
+                                                className="ml-2"
+                                            />
+                                        </h4>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <DataPoint
+                                            value={report.keystrokeInsights.typingBehavior.averageTypingSpeed}
+                                            unit="chars/sec"
+                                            label="Typing Speed"
+                                            description="Your average typing speed based on keystroke timing analysis"
+                                            citation={report.keystrokeInsights.citations?.[0]}
+                                            variant="small"
+                                            className="p-2 bg-white border border-indigo-100 rounded"
+                                            rawDataPath="interactions.typing.averageSpeed"
+                                            rawDataValue={report.keystrokeInsights.typingBehavior.averageTypingSpeed}
+                                        />
+                                        {report.keystrokeInsights.typingBehavior.coolPersonalFacts?.length > 0 && (
+                                            <div className="p-3 bg-white border border-indigo-100 rounded">
+                                                <p className="mb-2 text-sm font-medium text-indigo-700">
+                                                    🎯 Cool Personal Facts:
+                                                </p>
+                                                <div className="space-y-2">
+                                                    {report.keystrokeInsights.typingBehavior.coolPersonalFacts
+                                                        ?.slice(0, 4)
+                                                        ?.map((fact: string, idx: number) => (
+                                                            <div
+                                                                key={idx}
+                                                                className="px-3 py-2 text-sm bg-gradient-to-r from-indigo-100 to-purple-100 border border-indigo-200 rounded-lg text-indigo-900"
+                                                            >
+                                                                <span className="font-medium">✨</span> {fact}
+                                                            </div>
+                                                        ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {report.keystrokeInsights.typingBehavior.personalityIndicators.length > 0 && (
+                                            <div className="p-3 bg-white border border-indigo-100 rounded">
+                                                <p className="mb-2 text-sm font-medium text-indigo-700">
+                                                    Personality Traits:
+                                                </p>
+                                                <div className="space-y-1">
+                                                    {report.keystrokeInsights.typingBehavior.personalityIndicators
+                                                        .slice(0, 3)
+                                                        .map((trait, idx) => (
+                                                            <p key={idx} className="text-xs text-gray-700">
+                                                                • {trait}
+                                                            </p>
+                                                        ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Search Patterns */}
+                                <div className="p-4 border border-green-200 rounded-lg bg-gradient-to-br from-green-50 to-emerald-50">
+                                    <div className="flex items-center mb-3">
+                                        <h4 className="flex items-center font-medium text-green-800">
+                                            🔍 Search Behavior
+                                            <EnhancedTooltip
+                                                title="Search Pattern Analysis"
+                                                content="Analysis of your search frequency, query types, and common search terms to understand your information-seeking behavior."
+                                                dataSource={report.keystrokeInsights.citations?.[1]?.domainOrFeature}
+                                                confidence={report.keystrokeInsights.citations?.[1]?.confidence}
+                                                calculation={report.keystrokeInsights.citations?.[1]?.calculation}
+                                                variant="data"
+                                                className="ml-2"
+                                            />
+                                        </h4>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <DataPoint
+                                            value={report.keystrokeInsights.searchPatterns.searchFrequency}
+                                            unit="searches/day"
+                                            label="Search Activity"
+                                            description="Your average daily search frequency across all websites"
+                                            citation={report.keystrokeInsights.citations?.[1]}
+                                            variant="small"
+                                            className="p-2 bg-white border border-green-100 rounded"
+                                            rawDataPath="interactions.typing.searchQueries"
+                                            rawDataValue={report.keystrokeInsights.searchPatterns.searchFrequency}
+                                        />
+                                        {report.keystrokeInsights.searchPatterns.queryTypes.length > 0 && (
+                                            <div className="p-3 bg-white border border-green-100 rounded">
+                                                <p className="mb-2 text-sm font-medium text-green-700">Query Types:</p>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {report.keystrokeInsights.searchPatterns.queryTypes.map(
+                                                        (type, idx) => (
+                                                            <span
+                                                                key={idx}
+                                                                className="px-2 py-1 text-xs text-green-800 bg-green-100 rounded"
+                                                            >
+                                                                {type}
+                                                            </span>
+                                                        )
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {report.keystrokeInsights.searchPatterns.commonSearchTerms.length > 0 && (
+                                            <div className="p-3 bg-white border border-green-100 rounded">
+                                                <p className="mb-2 text-sm font-medium text-green-700">
+                                                    Popular Terms:
+                                                </p>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {report.keystrokeInsights.searchPatterns.commonSearchTerms
+                                                        .slice(0, 4)
+                                                        .map((term, idx) => (
+                                                            <span
+                                                                key={idx}
+                                                                className="px-2 py-1 text-xs rounded text-emerald-800 bg-emerald-100"
+                                                            >
+                                                                {term}
+                                                            </span>
+                                                        ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Content Preferences */}
+                                <div className="p-4 border rounded-lg border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50">
+                                    <div className="flex items-center mb-3">
+                                        <h4 className="flex items-center font-medium text-amber-800">
+                                            📖 Content Style
+                                            <EnhancedTooltip
+                                                title="Content Engagement Analysis"
+                                                content="Analysis of your content engagement patterns including reading style, engagement level, and information-seeking behavior."
+                                                dataSource={report.keystrokeInsights.citations?.[2]?.domainOrFeature}
+                                                confidence={report.keystrokeInsights.citations?.[2]?.confidence}
+                                                calculation={report.keystrokeInsights.citations?.[2]?.calculation}
+                                                variant="data"
+                                                className="ml-2"
+                                            />
+                                        </h4>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div className="p-3 bg-white border rounded border-amber-100">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <p className="text-sm font-medium text-amber-700">Reading Style:</p>
+                                                <Badge
+                                                    className={`text-xs ${
+                                                        report.keystrokeInsights.contentPreferences.readingStyle ===
+                                                        "thorough"
+                                                            ? "bg-green-100 text-green-800"
+                                                            : report.keystrokeInsights.contentPreferences
+                                                                    .readingStyle === "scanner"
+                                                              ? "bg-yellow-100 text-yellow-800"
+                                                              : "bg-blue-100 text-blue-800"
+                                                    }`}
+                                                >
+                                                    {report.keystrokeInsights.contentPreferences.readingStyle}
+                                                </Badge>
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-sm font-medium text-amber-700">Engagement:</p>
+                                                <Badge
+                                                    className={`text-xs ${
+                                                        report.keystrokeInsights.contentPreferences.engagementLevel ===
+                                                        "high"
+                                                            ? "bg-green-100 text-green-800"
+                                                            : report.keystrokeInsights.contentPreferences
+                                                                    .engagementLevel === "moderate"
+                                                              ? "bg-yellow-100 text-yellow-800"
+                                                              : "bg-red-100 text-red-800"
+                                                    }`}
+                                                >
+                                                    {report.keystrokeInsights.contentPreferences.engagementLevel}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                        {report.keystrokeInsights.contentPreferences.informationSeeking.length > 0 && (
+                                            <div className="p-3 bg-white border rounded border-amber-100">
+                                                <p className="mb-2 text-sm font-medium text-amber-700">
+                                                    Information Seeking:
+                                                </p>
+                                                <div className="space-y-1">
+                                                    {report.keystrokeInsights.contentPreferences.informationSeeking
+                                                        .slice(0, 3)
+                                                        .map((pattern, idx) => (
+                                                            <p key={idx} className="text-xs text-gray-700">
+                                                                • {pattern}
+                                                            </p>
+                                                        ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {report.keystrokeInsights.typingBehavior.interestTopics.length > 0 && (
+                                            <div className="p-3 bg-white border rounded border-amber-100">
+                                                <p className="mb-2 text-sm font-medium text-amber-700">
+                                                    Interest Topics:
+                                                </p>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {report.keystrokeInsights.typingBehavior.interestTopics
+                                                        .slice(0, 4)
+                                                        .map((topic, idx) => (
+                                                            <span
+                                                                key={idx}
+                                                                className="px-2 py-1 text-xs text-orange-800 bg-orange-100 rounded"
+                                                            >
+                                                                {topic}
+                                                            </span>
+                                                        ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

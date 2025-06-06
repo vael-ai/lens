@@ -130,7 +130,7 @@ export interface PageMetadata {
  */
 export interface StackedInteraction {
   // Type of interaction
-  type: "click" | "scroll" | "hover" | "input" | "selection"
+  type: "click" | "scroll" | "hover" | "input" | "selection" | "typing"
   // Number of times this interaction occurred
   count: number
   // Timestamp in milliseconds since Unix epoch of the first occurrence
@@ -179,6 +179,12 @@ export interface StackedInteraction {
     averageLength: number // Average length in characters
     count: number
   }
+  typedText?: {
+    // For typing interactions
+    fieldName: string
+    text: string
+    timestamp: number
+  }[]
 }
 
 /**
@@ -187,7 +193,7 @@ export interface StackedInteraction {
  */
 export interface InteractionData {
   // Type of interaction
-  type: "click" | "scroll" | "hover" | "input" | "selection"
+  type: "click" | "scroll" | "hover" | "input" | "selection" | "typing"
   // Timestamp in milliseconds since Unix epoch
   timestamp: number
   // URL where the interaction occurred
@@ -227,6 +233,7 @@ export interface InteractionData {
   inputType?: string // Type of input (text, checkbox, etc.)
   fieldName?: string // Name or ID of the input field
   hasValue?: boolean // Whether the field has a value
+  typedText?: string // The text that was typed
   // Selection specific
   selectionLength?: number // Length of selected text in characters
   hasSelection?: boolean // Whether there is a selection

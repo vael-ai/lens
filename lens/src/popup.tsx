@@ -239,7 +239,7 @@ function IndexPopup(): JSX.Element {
   useEffect(() => {
     // Only load data when switching to data-related tabs
     if (activeTab === "data" || activeTab === "overview") {
-      loadCollectedData()
+      loadCollectedData(true) // Force refresh when switching tabs to ensure fresh data
     }
   }, [activeTab])
 
@@ -259,29 +259,39 @@ function IndexPopup(): JSX.Element {
   /**
    * Loads collected data and calculates statistics with caching to prevent multiple calls.
    */
-  const loadCollectedData = async () => {
-    // Don't load if already loading or loaded recently
-    if (dataLoading || isDataLoaded) return
+  const loadCollectedData = async (forceRefresh = false) => {
+    // Don't load if already loading (unless force refresh)
+    if (dataLoading || (!forceRefresh && isDataLoaded)) return
 
     try {
       setDataLoading(true)
       const data = await getAllCollectedData()
       setCollectedData(data)
 
-      // Calculate exact export size (matches exportCollectedData format)
-      const exactExportSizeInBytes = calculateExactExportSize(data)
-      setDataSizeInBytes(exactExportSizeInBytes)
+      // Calculate both formatted and compact sizes
+      const formattedExportSizeInBytes = calculateExactExportSize(data)
+      const compactDataSizeInBytes = JSON.stringify(data).length
+
+      // Store the compact size for validation (matches backend logic)
+      setDataSizeInBytes(compactDataSizeInBytes)
 
       const websitesArray = Object.values(data.websites || {})
       const websiteCount = websitesArray.length
       const dataSizeFormatted =
-        (exactExportSizeInBytes / 1024).toFixed(2) + " KB"
+        (compactDataSizeInBytes / 1024).toFixed(2) + " KB"
+
+      // Add debug logging to help understand size differences
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `[Data Size Debug] Compact: ${(compactDataSizeInBytes / 1024).toFixed(2)}KB, Formatted: ${(formattedExportSizeInBytes / 1024).toFixed(2)}KB, Min Required: ${(DATA_LIMITS.MIN_REPORT_SIZE_BYTES / 1024).toFixed(2)}KB`
+        )
+      }
       const lastUpdatedTimestamp = data.lastUpdated || Date.now()
       const lastUpdatedFormatted = new Date(
         lastUpdatedTimestamp
       ).toLocaleString()
       const reportIsReady =
-        exactExportSizeInBytes >= DATA_LIMITS.MIN_REPORT_SIZE_BYTES
+        compactDataSizeInBytes >= DATA_LIMITS.MIN_REPORT_SIZE_BYTES
 
       // Check if user can generate a new report (if data has grown by at least minimum threshold since last report)
       const canGenerateNew = reportIsReady
@@ -592,19 +602,29 @@ function IndexPopup(): JSX.Element {
       return
     }
 
-    // Ensure userEmail and collectedData are available (already in component state)
-    if (!userEmail || !collectedData) {
-      alert(
-        "User email or data not available. Please ensure onboarding is complete and data is collected."
-      )
+    // Do a live check - fetch fresh data from storage (no cache)
+    let freshData: CollectedData
+    try {
+      freshData = await getAllCollectedData()
+    } catch (error) {
+      console.error("Error loading fresh data for report generation:", error)
+      alert("Failed to load current data. Please try again.")
       return
     }
 
-    // Recalculate export size using compact format to match backend logic
-    const exactExportSize = JSON.stringify(collectedData).length
+    // Calculate compact data size (same method as backend validation)
+    const compactDataSize = JSON.stringify(freshData).length
+    const formattedDataSize = calculateExactExportSize(freshData)
 
-    // Use the new validation function
-    const validation = validateDataForReport(exactExportSize)
+    console.log(
+      `[Report Generation] Data sizes - Compact: ${(compactDataSize / 1024).toFixed(2)}KB (used for validation), Formatted: ${(formattedDataSize / 1024).toFixed(2)}KB (shown in UI)`
+    )
+    console.log(
+      `[Report Generation] Using API: ${USE_LOCAL_API ? "LOCAL" : "PRODUCTION"} - ${API_BASE_URL}`
+    )
+
+    // Use the compact size for validation (matches backend logic)
+    const validation = validateDataForReport(compactDataSize)
     if (!validation.valid) {
       alert(validation.reason)
       return
@@ -636,7 +656,7 @@ function IndexPopup(): JSX.Element {
         body: JSON.stringify({
           reportId: reportId,
           email: userEmail,
-          userData: collectedData // Send the actual collected data object
+          userData: freshData // Send the fresh data object
         })
       })
 
@@ -657,7 +677,7 @@ function IndexPopup(): JSX.Element {
         }
 
         // Mark that a report was generated with this data size
-        setLastReportDataSize(exactExportSize)
+        setLastReportDataSize(compactDataSize)
         setCanGenerateNewReport(false)
 
         // Add report to pending list for notification checking
@@ -1244,20 +1264,41 @@ function IndexPopup(): JSX.Element {
                     </span>
                   </div>
                   <div className="flex flex-col items-center justify-center p-3 transition-transform duration-200 border border-indigo-100 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 dark:border-indigo-800/30 hover:scale-105">
-                    <div className="mb-1 text-indigo-500 dark:text-indigo-400">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="w-5 h-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"
-                        />
-                      </svg>
+                    <div className="flex items-center justify-between w-full mb-1">
+                      <div className="text-indigo-500 dark:text-indigo-400">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="w-5 h-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"
+                          />
+                        </svg>
+                      </div>
+                      <button
+                        onClick={() => loadCollectedData(true)}
+                        className="p-1 text-indigo-500 transition-colors duration-200 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
+                        title="Refresh data"
+                        disabled={dataLoading}>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className={`w-3 h-3 ${dataLoading ? "animate-spin" : ""}`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                          />
+                        </svg>
+                      </button>
                     </div>
                     <span className="text-xs text-slate-500 dark:text-slate-400">
                       Size

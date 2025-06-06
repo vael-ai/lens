@@ -10,7 +10,7 @@ import type { CollectedData } from "../../../../../lens/src/types/data";
 import crypto from "crypto";
 import { env } from "@/env";
 import { generateInternalToken } from "@/lib/internal-jwt";
-import { DATA_LIMITS, DataSizeUtils, RATE_LIMITS as CONFIG_RATE_LIMITS, AI_CONFIG } from "@/config/data-limits";
+import { DataSizeUtils, RATE_LIMITS as CONFIG_RATE_LIMITS, AI_CONFIG } from "@/config/data-limits";
 
 // This endpoint should not be cached as it handles unique data submissions
 export const dynamic = "force-dynamic";
@@ -1023,10 +1023,7 @@ export async function POST(request: NextRequest) {
         }
 
         // 4. Call internal API with improved error handling
-        const baseUrl =
-            process.env.NODE_ENV === "development"
-                ? "http://localhost:3000"
-                : `https://${process.env.VERCEL_URL || "lens.vael.ai"}`;
+        const baseUrl = process.env.NODE_ENV === "development" ? "http://localhost:3000" : "https://lens.vael.ai"; // Always use main domain for production
 
         console.log(`Calling internal API: ${baseUrl}/api/internal/process-report`);
 

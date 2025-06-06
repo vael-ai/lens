@@ -1,7 +1,7 @@
 {
   "name": "vael-lens",
   "displayName": "lens by vael",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Privacy-first browser extension that collects browsing data locally to enable AI-powered insights",
   "author": "Vael AI",
   "scripts": {

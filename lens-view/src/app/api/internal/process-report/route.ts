@@ -8,6 +8,7 @@ import clientPromise from "@/lib/mongo/mongodb";
 import { validateInternalToken } from "@/lib/internal-jwt";
 import type { CollectedData } from "../../../../../../lens/src/types/data";
 import crypto from "crypto";
+import { AI_CONFIG } from "@/config/data-limits";
 
 // This endpoint should not be cached as it handles unique data submissions
 export const dynamic = "force-dynamic";
@@ -252,41 +253,46 @@ async function processReportInBackground(reportId: string, email: string, userDa
         const rawDataSizeKB = JSON.stringify(userData).length / 1024;
         console.log(`Raw data size: ${Math.round(rawDataSizeKB)}KB - sending full raw data to AI`);
 
-        // Send all data with no filtering or scaling
-        const maxDomains = Object.keys(websites).length; // Include ALL domains
+        // OPTIMIZED: Apply smart filtering for faster processing
+        const totalDomains = Object.keys(websites).length;
+        const maxDomains = Math.min(totalDomains, AI_CONFIG.MAX_DOMAINS_TO_ANALYZE);
         const interactionDetailLevel = "full"; // Always use full detail
         const metadataLevel = "complete"; // Always use complete metadata
-        const engagementThreshold = 0; // Include all data regardless of engagement
+        const engagementThreshold = AI_CONFIG.MIN_ENGAGEMENT_THRESHOLD;
 
         console.log(
-            `Full data processing: ${maxDomains} domains, ${interactionDetailLevel} interactions, ${metadataLevel} metadata`
+            `OPTIMIZED processing: ${maxDomains}/${totalDomains} domains, ${interactionDetailLevel} interactions, ${metadataLevel} metadata, ${engagementThreshold} engagement threshold`
         );
 
         // Stage 3: Analyzing domain patterns (35%)
         await updateProgress(35, "Analyzing domain patterns");
 
-        // Get ALL domains without any filtering or limiting
-        const sortedDomains = Object.entries(websites).sort(([, a], [, b]) => {
-            const aData = a as any;
-            const bData = b as any;
-            // Enhanced engagement score with interaction weight
-            const aScore =
-                aData.totalFocusTime + aData.visitCount * 8000 + Object.keys(aData.interactions || {}).length * 2000;
-            const bScore =
-                bData.totalFocusTime + bData.visitCount * 8000 + Object.keys(bData.interactions || {}).length * 2000;
-            return bScore - aScore;
-        }); // Remove slice to include ALL domains
+        // Sort domains by engagement score and apply filtering
+        const sortedDomains = Object.entries(websites)
+            .map(([domain, data]) => {
+                const domainData = data as any;
+                // Calculate engagement score (focus time + visit count * weight + interaction count * weight)
+                const engagementScore =
+                    (domainData.totalFocusTime || 0) +
+                    (domainData.visitCount || 0) * 8000 +
+                    Object.keys(domainData.interactions || {}).length * 2000;
+                return [domain, data, engagementScore] as const;
+            })
+            .filter(([, , score]) => score >= engagementThreshold) // Filter by engagement threshold
+            .sort(([, , a], [, , b]) => b - a) // Sort by engagement score (highest first)
+            .slice(0, maxDomains) // Limit to max domains
+            .map(([domain, data]) => [domain, data] as const); // Remove score from final result
 
         // Stage 4: Processing user interactions (50%)
         await updateProgress(50, "Processing user interactions");
 
-        // Full interaction processing - no scaling or limiting, WITH TIMESTAMP PRESERVATION
+        // OPTIMIZED interaction processing - essential data with timestamps
         const processInteractions = (interactions: any) => {
             if (!interactions) return {};
 
             const entries = Object.entries(interactions);
 
-            // Always return full detail with all data INCLUDING timestamps for AI analysis
+            // Return optimized detail with essential data + timestamps for AI analysis
             return Object.fromEntries(
                 entries.map(([type, interaction]) => {
                     const interactionData = interaction as any;
@@ -307,38 +313,35 @@ async function processReportInBackground(reportId: string, email: string, userDa
                                 : null,
 
                             averageDuration: interactionData.averageDuration,
-                            positions: interactionData.positions || [], // Include ALL positions
-                            targetElements: interactionData.targetElements || [], // Include ALL target elements
-                            scrollPatterns: interactionData.scrollPatterns || null,
-                            inputFields: interactionData.inputFields || [], // Include ALL input fields
-                            selectionStats: interactionData.selectionStats || null,
 
-                            // Include any other interaction data that might be present
-                            ...interactionData,
+                            // OPTIMIZED: Limit array sizes for performance
+                            positions: (interactionData.positions || []).slice(0, 10), // Top 10 positions
+                            targetElements: (interactionData.targetElements || []).slice(0, 5), // Top 5 elements
+                            scrollPatterns: interactionData.scrollPatterns || null,
+                            inputFields: (interactionData.inputFields || []).slice(0, 5), // Top 5 input fields
+                            selectionStats: interactionData.selectionStats || null,
                         },
                     ];
                 })
             );
         };
 
-        // Full metadata processing - no scaling or limiting
+        // OPTIMIZED metadata processing - essential data only
         const processMetadata = (metadata: any) => {
             if (!metadata) return null;
 
-            // Always return complete metadata with all available data
+            // Return essential metadata with size limits
             return {
                 title: metadata.title,
-                description: metadata.description,
+                description: metadata.description?.slice(0, 200), // Limit description length
                 pageType: metadata.pageType,
-                keywords: metadata.keywords || [], // Include ALL keywords
+                keywords: (metadata.keywords || []).slice(0, 10), // Top 10 keywords only
                 url: metadata.url,
                 language: metadata.language,
-                // Include any other metadata that might be present
-                ...metadata,
             };
         };
 
-        // Create complete dataset with full raw data INCLUDING TIMESTAMPS
+        // Create optimized dataset with essential data + timestamps
         const optimizedWebsites = Object.fromEntries(
             sortedDomains.map(([domain, data]) => {
                 const domainData = data as any;
@@ -362,10 +365,10 @@ async function processReportInBackground(reportId: string, email: string, userDa
 
                         inferredDomainClassification: domainData.inferredDomainClassification,
 
-                        // Full interaction data with timestamps
+                        // OPTIMIZED: Essential interaction data with timestamps
                         interactionPatterns: processInteractions(domainData.interactions),
 
-                        // Full metadata with timestamps
+                        // OPTIMIZED: Essential metadata only
                         pageContext: processMetadata(domainData.pageMetadata),
 
                         // Essential domain insights only
@@ -429,8 +432,10 @@ async function processReportInBackground(reportId: string, email: string, userDa
             dataProfile: {
                 originalSize: `${Math.round(rawDataSizeKB)}KB`,
                 analyzedDomains: sortedDomains.length,
-                totalDomains: Object.keys(websites).length,
+                totalDomains: totalDomains,
                 scalingLevel: interactionDetailLevel,
+                engagementThreshold: engagementThreshold,
+                optimization: "enabled",
 
                 // CRITICAL: Provide real date range for AI to use
                 dataTimespan:
@@ -457,10 +462,16 @@ async function processReportInBackground(reportId: string, email: string, userDa
         // Stage 5: Preparing AI analysis (65%)
         await updateProgress(65, "Preparing AI analysis");
 
-        // Estimate tokens and log
+        // Estimate tokens and log optimization impact
+        const optimizedDataSize = JSON.stringify(optimizedAnalysisData).length / 1024;
         const tokenEstimate = JSON.stringify(optimizedAnalysisData).length / 4;
+        const reductionPercent = Math.round(((rawDataSizeKB - optimizedDataSize) / rawDataSizeKB) * 100);
+
         console.log(
-            `Optimized processing: ${rawDataSizeKB}KB -> ${sortedDomains.length} domains (~${Math.round(tokenEstimate)} tokens)`
+            `🚀 OPTIMIZATION IMPACT: ${Math.round(rawDataSizeKB)}KB -> ${Math.round(optimizedDataSize)}KB (${reductionPercent}% reduction)`
+        );
+        console.log(
+            `📊 PROCESSING: ${sortedDomains.length}/${totalDomains} domains, ~${Math.round(tokenEstimate)} tokens, ${engagementThreshold} engagement threshold`
         );
 
         // Stage 6: Generating AI insights (75%)
@@ -470,13 +481,14 @@ async function processReportInBackground(reportId: string, email: string, userDa
         const { object: report } = await generateObject({
             model,
             schema: reportSchema,
-            prompt: `You are a digital behavior analyst specializing in extracting personal insights from browsing data. Analyze this data to create surprising, personalized insights.
+            prompt: `You are a digital behavior analyst specializing in extracting personal insights from browsing data. This data has been intelligently optimized to focus on the most engaging ${sortedDomains.length} out of ${totalDomains} domains for faster, more accurate analysis.
 
 CRITICAL REQUIREMENTS:
 - Use descriptive labels ONLY (never numbers like 0,1,2)
 - Use real dates between ${optimizedAnalysisData.dataProfile.dataTimespan?.earliestDate || "N/A"} and ${optimizedAnalysisData.dataProfile.dataTimespan?.latestDate || "N/A"}
 - Generate insights that surprise users about their digital habits
 - Back every insight with actual data
+- Focus on the most significant patterns from the top-engagement domains
 
 KEYSTROKE INSIGHTS - FOCUS ON COOL PERSONAL FACTS:
 When analyzing typing data (interactions.typing), extract SPECIFIC, INTERESTING personal facts that would be valuable for personalization:

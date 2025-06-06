@@ -28,13 +28,19 @@ export const AI_CONFIG = {
     MAX_AI_TOKENS: 800000, // ~500KB of JSON data
 
     /** Maximum output tokens from AI */
-    MAX_OUTPUT_TOKENS: 64000,
+    MAX_OUTPUT_TOKENS: 32000, // Reduced for faster processing
 
     /** Whether to enable full data transparency mode */
     FULL_TRANSPARENCY_MODE: true,
 
     /** Temperature setting for AI generation */
-    AI_TEMPERATURE: 0.1,
+    AI_TEMPERATURE: 0.15,
+
+    /** Maximum domains to analyze (optimize for speed) */
+    MAX_DOMAINS_TO_ANALYZE: 30, // Only analyze top 30 most visited domains
+
+    /** Minimum engagement threshold for domain inclusion */
+    MIN_ENGAGEMENT_THRESHOLD: 2000, // Focus time + interaction score threshold
 } as const;
 
 /**

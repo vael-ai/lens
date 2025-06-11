@@ -121,14 +121,6 @@ function IndexPopup(): JSX.Element {
     // Use the same formatting as exportCollectedData: JSON.stringify(data, null, 2)
     const exactSize = JSON.stringify(data, null, 2).length
 
-    // Debug logging to verify accuracy (can be removed in production)
-    if (process.env.NODE_ENV === "development") {
-      const compactSize = JSON.stringify(data).length
-      console.log(
-        `[Size Debug] Compact: ${(compactSize / 1024).toFixed(2)}KB, Formatted: ${(exactSize / 1024).toFixed(2)}KB`
-      )
-    }
-
     return exactSize
   }
 
@@ -280,12 +272,7 @@ function IndexPopup(): JSX.Element {
       const dataSizeFormatted =
         (compactDataSizeInBytes / 1024).toFixed(2) + " KB"
 
-      // Add debug logging to help understand size differences
-      if (process.env.NODE_ENV === "development") {
-        console.log(
-          `[Data Size Debug] Compact: ${(compactDataSizeInBytes / 1024).toFixed(2)}KB, Formatted: ${(formattedExportSizeInBytes / 1024).toFixed(2)}KB, Min Required: ${(DATA_LIMITS.MIN_REPORT_SIZE_BYTES / 1024).toFixed(2)}KB`
-        )
-      }
+      // Debug logging removed for security
       const lastUpdatedTimestamp = data.lastUpdated || Date.now()
       const lastUpdatedFormatted = new Date(
         lastUpdatedTimestamp
@@ -393,10 +380,7 @@ function IndexPopup(): JSX.Element {
     try {
       const dataStr = await exportCollectedData()
 
-      // Log actual export size for verification
-      console.log(
-        `[Export Debug] Actual export size: ${(dataStr.length / 1024).toFixed(2)}KB`
-      )
+      // Export size verification (log removed for security)
 
       const dataBlob = new Blob([dataStr], { type: "application/json" })
       const url = URL.createObjectURL(dataBlob)
@@ -527,11 +511,7 @@ function IndexPopup(): JSX.Element {
         ? "http://localhost:3000"
         : "https://lens.vael.ai"
 
-      console.log(
-        `Sending email to ${USE_LOCAL_API ? "development" : "production"} server:`,
-        emailToSave,
-        `(${serverUrl})`
-      )
+      // Sending email to server (log removed for security)
 
       const response = await fetch(`${serverUrl}/api/save-email`, {
         method: "POST",
@@ -562,7 +542,6 @@ function IndexPopup(): JSX.Element {
       }
 
       // Only update UI and storage after successful server response
-      console.log("Email successfully saved to server:", result)
 
       // Save to local storage
       const storage = new Storage()
@@ -574,7 +553,6 @@ function IndexPopup(): JSX.Element {
         masterCollectionEnabled: true
       })
       setConfig(updatedConfig)
-      console.log("Master collection enabled after email save")
 
       // Also store in cookie for dev mode
       if (USE_LOCAL_API) {
@@ -616,12 +594,7 @@ function IndexPopup(): JSX.Element {
     const compactDataSize = JSON.stringify(freshData).length
     const formattedDataSize = calculateExactExportSize(freshData)
 
-    console.log(
-      `[Report Generation] Data sizes - Compact: ${(compactDataSize / 1024).toFixed(2)}KB (used for validation), Formatted: ${(formattedDataSize / 1024).toFixed(2)}KB (shown in UI)`
-    )
-    console.log(
-      `[Report Generation] Using API: ${USE_LOCAL_API ? "LOCAL" : "PRODUCTION"} - ${API_BASE_URL}`
-    )
+    // Data validation (production logs removed for security)
 
     // Use the compact size for validation (matches backend logic)
     const validation = validateDataForReport(compactDataSize)
@@ -643,10 +616,7 @@ function IndexPopup(): JSX.Element {
       const serverUrl = USE_LOCAL_API
         ? "http://localhost:3000"
         : "https://lens.vael.ai"
-      console.log(
-        `Submitting data to ${USE_LOCAL_API ? "development" : "production"} server for report generation:`,
-        reportId
-      )
+      // Submitting data for report generation (log removed for security)
 
       const response = await fetch(`${serverUrl}/api/submit-data`, {
         method: "POST",
@@ -665,7 +635,6 @@ function IndexPopup(): JSX.Element {
       if (result.success) {
         // Handle cached report response
         if (result.cached) {
-          console.log("Using cached report:", result.reportId)
           const reportsUrl = USE_LOCAL_API
             ? "http://localhost:3000"
             : "https://lens.vael.ai"
@@ -692,7 +661,6 @@ function IndexPopup(): JSX.Element {
           timestamp: Date.now()
         })
         await storage.set("pendingReports", pendingReports)
-        console.log(`Added report ${reportId} to pending notifications list`)
 
         const reportsUrl = USE_LOCAL_API
           ? "http://localhost:3000"
@@ -786,8 +754,6 @@ function IndexPopup(): JSX.Element {
           Date.now() - report.timestamp > 30 * 1000 &&
           !lastCheckedReports.includes(report.reportId)
         ) {
-          console.log(`Checking status of report: ${report.reportId}`)
-
           try {
             const response = await fetch(
               `${API_BASE_URL}/api/reports/${report.reportId}/status?email=${encodeURIComponent(report.email)}`
@@ -795,9 +761,7 @@ function IndexPopup(): JSX.Element {
             if (response.ok) {
               const status = await response.json()
               if (status.status === "completed") {
-                console.log(
-                  `Report ${report.reportId} is completed, showing notification`
-                )
+                // Report completed, showing notification (log removed for security)
                 // await showReportCompletedNotification(report.reportId) // Function does not exist
 
                 // Add to checked list to avoid duplicate notifications

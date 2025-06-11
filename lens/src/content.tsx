@@ -440,9 +440,7 @@ const CollectionIndicator = () => {
         )
 
         if (!validation.allowed) {
-          console.log(
-            `lens: Data collection blocked for ${window.location.href}: ${validation.reason}`
-          )
+          // Data collection blocked for current page (log removed for security)
           updateExtensionIcon(IconState.DISABLED)
           return
         }

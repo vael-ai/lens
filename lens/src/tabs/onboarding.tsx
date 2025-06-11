@@ -29,7 +29,7 @@ const OnboardingPage = () => {
       if (completed) {
         // Optionally, redirect to popup or close tab if already onboarded
         // For now, we'll allow re-submission but ideally, UI would change
-        console.log("User already onboarded.")
+        // User already onboarded
       }
     }
     checkOnboardingStatus()

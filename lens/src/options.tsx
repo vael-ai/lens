@@ -518,12 +518,7 @@ function OptionsPage() {
     const compactDataSize = calculateCompactDataSize(freshData)
     const formattedDataSize = calculateExactExportSize(freshData)
 
-    console.log(
-      `[Report Generation] Data sizes - Compact: ${(compactDataSize / 1024).toFixed(2)}KB (used for validation), Formatted: ${(formattedDataSize / 1024).toFixed(2)}KB (shown in UI)`
-    )
-    console.log(
-      `[Report Generation] Using API: ${USE_LOCAL_API ? "LOCAL" : "PRODUCTION"} - ${API_BASE_URL}`
-    )
+    // Data validation (production logs removed for security)
 
     // Use the compact size for validation (matches backend logic)
     const validation = validateDataForReport(compactDataSize)
@@ -545,10 +540,7 @@ function OptionsPage() {
       const serverUrl = USE_LOCAL_API
         ? "http://localhost:3000"
         : "https://lens.vael.ai"
-      console.log(
-        `Submitting data to ${USE_LOCAL_API ? "development" : "production"} server for report generation:`,
-        reportId
-      )
+      // Submitting data for report generation (log removed for security)
 
       const response = await fetch(`${serverUrl}/api/submit-data`, {
         method: "POST",
@@ -567,7 +559,7 @@ function OptionsPage() {
       if (result.success) {
         // Handle cached report response
         if (result.cached) {
-          console.log("Using cached report:", result.reportId)
+          // Using cached report (log removed for security)
           const reportsUrl = USE_LOCAL_API
             ? "http://localhost:3000"
             : "https://lens.vael.ai"

@@ -121,7 +121,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
       return false
     }
 
-    console.log("Notification permissions are available")
+    // Notification permissions are available
     return true
   } catch (error) {
     console.error("Error requesting notification permissions:", error)
@@ -165,7 +165,7 @@ async function createNotification(
       silent: false // Allow sound
     })
 
-    console.log(`Notification created: ${notificationId}`)
+    // Notification created (log removed for security)
     return true
   } catch (error) {
     console.error("Error creating notification:", error)
@@ -228,7 +228,7 @@ export async function showReportCompletedNotification(
       2 // High priority for completed reports
     )
 
-    console.log(`Report completion notification sent for ${reportId}:`, success)
+    // Report completion notification sent (log removed for security)
   } catch (error) {
     console.error("Error showing report completed notification:", error)
   }
@@ -385,7 +385,7 @@ export function setupNotificationHandlers(): void {
 
   // Handle notification clicks
   chrome.notifications.onClicked.addListener((notificationId) => {
-    console.log(`Notification clicked: ${notificationId}`)
+    // Notification clicked (log removed for security)
 
     // Clear the notification
     chrome.notifications.clear(notificationId)
@@ -410,7 +410,7 @@ export function setupNotificationHandlers(): void {
 
   // Handle notification close events
   chrome.notifications.onClosed.addListener((notificationId, byUser) => {
-    console.log(`Notification closed: ${notificationId}, by user: ${byUser}`)
+    // Notification closed (log removed for security)
   })
 }
 
@@ -425,7 +425,7 @@ export async function initializeNotifications(): Promise<void> {
     // Set up event handlers
     setupNotificationHandlers()
 
-    console.log("Notification system initialized")
+    // Notification system initialized
   } catch (error) {
     console.error("Error initializing notification system:", error)
   }

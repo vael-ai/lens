@@ -11,6 +11,7 @@ export type MessageNames =
   | "refreshData"
   | "getTabId"
   | "getCollectionStatus"
+  | "reportCompleted"
 
 // Define payload types for different messages
 export interface IconPayload {
@@ -44,6 +45,11 @@ export interface CollectionStatusPayload {
   time: number
 }
 
+export interface ReportCompletedPayload {
+  reportId: string
+  email: string
+}
+
 // Union type for all possible payloads
 export type MessagePayload =
   | IconPayload
@@ -51,6 +57,7 @@ export type MessagePayload =
   | DataPayload
   | TabIdPayload
   | CollectionStatusPayload
+  | ReportCompletedPayload
 
 /**
  * Creates a strongly typed message for extension messaging

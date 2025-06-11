@@ -376,7 +376,7 @@ async function queueDataForRetry(data: CollectedData): Promise<void> {
       null
     )
 
-    console.log(`Data queued for retry. Queue size: ${updatedQueue.length}`)
+    // Data queued for retry (log removed for security)
   } catch (queueError) {
     console.error("Failed to queue data for retry:", queueError)
   }
@@ -432,9 +432,7 @@ async function sendWithRetry(
 
       // Use longer delay for network errors
       if (retriesLeft > 0) {
-        console.log(
-          `Network error, retrying after longer delay. ${retriesLeft} retries left.`
-        )
+        // Network error, retrying after delay (log removed for security)
         await new Promise((resolve) =>
           setTimeout(resolve, API_CONFIG.networkRetryDelay)
         )
@@ -459,7 +457,7 @@ async function sendWithRetry(
       retriesLeft > 0 &&
       !(error instanceof Error && error.message.includes("4"))
     ) {
-      console.log(`Retrying request. ${retriesLeft} retries left.`)
+      // Retrying request (log removed for security)
 
       // Exponential backoff
       await new Promise((resolve) => setTimeout(resolve, delay))
@@ -487,7 +485,7 @@ export async function processPendingData(): Promise<void> {
       return
     }
 
-    console.log(`Processing ${queuedData.length} pending data items`)
+    // Processing pending data items (log removed for security)
 
     // Process data in batches to avoid overwhelming the server
     const batches = Math.ceil(queuedData.length / API_CONFIG.batchSize)
@@ -525,9 +523,7 @@ export async function processPendingData(): Promise<void> {
         async () => storage.set(PENDING_DATA_KEY, remainingItems),
         null
       )
-      console.log(
-        `Processed ${successCount} pending items. ${remainingItems.length} remain.`
-      )
+      // Successfully processed pending items (log removed for security)
     }
   } catch (error) {
     console.error("Error processing pending data:", error)
@@ -691,7 +687,7 @@ export async function processPendingAnalytics(): Promise<void> {
       return
     }
 
-    console.log(`Processing ${queuedEvents.length} pending analytics events`)
+    // Processing pending analytics events (log removed for security)
 
     // Process events in batches
     const batches = Math.ceil(queuedEvents.length / API_CONFIG.batchSize)
@@ -731,15 +727,13 @@ export async function processPendingAnalytics(): Promise<void> {
         async () => storage.set(PENDING_ANALYTICS_KEY, remainingItems),
         null
       )
-      console.log(
-        `Processed ${successCount} pending analytics events. ${remainingItems.length} remain.`
-      )
+      // Successfully processed pending analytics events (log removed for security)
     }
   } catch (error) {
     console.error("Error processing pending analytics:", error)
   }
   */
-  console.log("Analytics processing is currently disabled")
+  // Analytics processing is currently disabled
 }
 
 /**

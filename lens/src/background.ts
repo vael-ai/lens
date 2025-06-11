@@ -3,7 +3,7 @@ import { Storage } from "@plasmohq/storage"
 import { sendAnalyticsEvent } from "./utils/api"
 import { createAnalyticsEvent } from "./utils/dataCollection"
 import { registerMessageHandler } from "./utils/messaging"
-import type { IconPayload } from "./utils/messaging"
+import type { IconPayload, ReportCompletedPayload } from "./utils/messaging"
 import {
   checkDataSizeAndNotify,
   initializeNotifications,
@@ -199,13 +199,11 @@ registerMessageHandler("getTabId", async (_, sender) => {
 })
 
 // Handle report completion notifications
-registerMessageHandler<{ reportId: string; email: string }>(
+registerMessageHandler<ReportCompletedPayload>(
   "reportCompleted",
   async (payload) => {
     try {
-      console.log(
-        `Report completed notification received: ${payload.reportId} for ${payload.email}`
-      )
+      // Report completion notification received (log removed for security)
       await showReportCompletedNotification(payload.reportId)
       return { success: true }
     } catch (error) {
@@ -402,7 +400,7 @@ const setIconState = async (state: string, tabId: number) => {
         .catch(() => false)
 
       if (!tabExists) {
-        console.log(`Tab ${tabId} no longer exists, skipping badge update`)
+        // Tab no longer exists, skipping badge update (log removed for security)
         return
       }
 

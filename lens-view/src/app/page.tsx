@@ -91,7 +91,7 @@ export default function HomePage() {
                         <Link
                             href="https://use.vael.ai/lens"
                             target="_blank"
-                            className="flex items-center justify-center w-full h-12 gap-2 px-4 py-3 text-sm font-medium text-black transition-all duration-300 bg-white sm:px-6 sm:py-4 sm:text-base sm:w-48 lg:w-52 sm:h-14 hover:bg-gray-100 btn-pop"
+                            className="inline-flex items-center justify-center w-full h-12 gap-2 px-4 py-3 text-sm font-medium text-black transition-all duration-300 bg-white border rounded-lg sm:w-48 lg:w-52 sm:h-14 sm:px-6 sm:py-4 sm:text-base backdrop-blur-sm border-gray-700/50 hover:border-gray-600/70 hover:bg-gray-100 btn-pop"
                         >
                             Install Extension <ArrowRight className="w-4 h-4 arrow-slide" />
                         </Link>

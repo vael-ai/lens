@@ -10,6 +10,9 @@ export const metadata: Metadata = {
     description: "Open-source, privacy-first browser extension for detailed insights into your browsing habits.",
     icons: [{ rel: "icon", url: "/favicon.ico" }],
     keywords: [
+        "lens",
+        "vael",
+        "lens by vael",
         "browser extension",
         "privacy",
         "open source",
@@ -35,14 +38,14 @@ export const metadata: Metadata = {
         type: "website",
         locale: "en_US",
         url: "https://lens.vael.ai",
-        siteName: "lens - Browsing Intelligence",
-        title: "lens - The Next Generation of Browsing Intelligence",
+        siteName: "lens by vael- Browsing Intelligence",
+        title: "lens by vael - The Next Generation of Browsing Intelligence",
         description: "Open-source, privacy-first browser extension for detailed insights into your browsing habits.",
         images: [
             {
-                url: "/vael-logo.png",
-                width: 512,
-                height: 512,
+                url: "/lens_homepage_504x392.jpg",
+                width: 504,
+                height: 392,
                 alt: "lens - Browsing Intelligence by Vael",
             },
         ],
@@ -51,9 +54,16 @@ export const metadata: Metadata = {
         card: "summary_large_image",
         site: "@Vael_AI",
         creator: "@Vael_AI",
-        title: "lens - The Next Generation of Browsing Intelligence",
+        title: "lens by vael - The Next Generation of Browsing Intelligence",
         description: "Open-source, privacy-first browser extension for detailed insights into your browsing habits.",
-        images: ["/vael-logo.png"],
+
+        images: [
+            {
+                url: "/lens_homepage_504x392.jpg",
+                width: 504,
+                height: 392,
+            },
+        ],
     },
 };
 

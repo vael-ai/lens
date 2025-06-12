@@ -17,7 +17,7 @@ env:
 jobs:
     lint_build:
         name: Lint and Build
-        runs-on: ubuntu-latest
+        runs-on: blacksmith-4vcpu-ubuntu-2404
         defaults:
             run:
                 working-directory: ./lens-view
@@ -32,7 +32,7 @@ jobs:
                   run_install: false
 
             - name: Setup Node v${{ env.NODE_LTS_VERSION }}
-              uses: actions/setup-node@v4
+              uses: useblacksmith/setup-node@v5
               with:
                   node-version: ${{ env.NODE_LTS_VERSION }}
                   cache: pnpm

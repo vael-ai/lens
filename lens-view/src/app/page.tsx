@@ -53,7 +53,7 @@ export default function HomePage() {
 
             {/* Main Content - Responsive and centered */}
             <main className="flex items-center justify-center flex-grow px-4 overflow-y-auto sm:px-6">
-                <div className="relative z-10 max-w-4xl mx-auto text-center hero-compact py-8">
+                <div className="relative z-10 max-w-4xl py-8 mx-auto text-center hero-compact">
                     {/* Logo with hover popup effect - Responsive sizing */}
                     <div className="relative inline-block mb-6 sm:mb-8 group">
                         <div
@@ -88,12 +88,13 @@ export default function HomePage() {
 
                     {/* CTA Buttons - Responsive stacking */}
                     <div className="relative z-20 flex flex-col items-center justify-center flex-shrink-0 gap-3 sm:flex-row sm:gap-4">
-                        <Button
-                            size="lg"
+                        <Link
+                            href="https://use.vael.ai/lens"
+                            target="_blank"
                             className="flex items-center justify-center w-full h-12 gap-2 px-4 py-3 text-sm font-medium text-black transition-all duration-300 bg-white sm:px-6 sm:py-4 sm:text-base sm:w-48 lg:w-52 sm:h-14 hover:bg-gray-100 btn-pop"
                         >
                             Install Extension <ArrowRight className="w-4 h-4 arrow-slide" />
-                        </Button>
+                        </Link>
                         <Link
                             href="https://twitter.com/vael_ai/status/1789380050480199922"
                             target="_blank"

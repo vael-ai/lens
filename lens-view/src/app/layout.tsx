@@ -23,17 +23,6 @@ export const metadata: Metadata = {
     authors: [{ name: "Vael AI", url: "https://vael.ai" }],
     creator: "Vael AI",
     publisher: "Vael AI",
-    robots: {
-        index: true,
-        follow: true,
-        googleBot: {
-            index: true,
-            follow: true,
-            "max-video-preview": -1,
-            "max-image-preview": "large",
-            "max-snippet": -1,
-        },
-    },
     openGraph: {
         type: "website",
         locale: "en_US",
@@ -44,7 +33,7 @@ export const metadata: Metadata = {
         images: [
             {
                 url: "/lens_homepage.png",
-                alt: "lens - Browsing Intelligence by Vael",
+                alt: "lens by vael- Browsing Intelligence by Vael",
             },
         ],
     },

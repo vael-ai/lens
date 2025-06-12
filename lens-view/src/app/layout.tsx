@@ -43,9 +43,7 @@ export const metadata: Metadata = {
         description: "Open-source, privacy-first browser extension for detailed insights into your browsing habits.",
         images: [
             {
-                url: "/lens_homepage_504x392.jpg",
-                width: 504,
-                height: 392,
+                url: "/lens_homepage.png",
                 alt: "lens - Browsing Intelligence by Vael",
             },
         ],
@@ -56,14 +54,7 @@ export const metadata: Metadata = {
         creator: "@Vael_AI",
         title: "lens by vael - The Next Generation of Browsing Intelligence",
         description: "Open-source, privacy-first browser extension for detailed insights into your browsing habits.",
-
-        images: [
-            {
-                url: "/lens_homepage_504x392.jpg",
-                width: 504,
-                height: 392,
-            },
-        ],
+        images: ["/lens_homepage.png"],
     },
 };
 

@@ -32,7 +32,7 @@ export const metadata: Metadata = {
         description: "Open-source, privacy-first browser extension for detailed insights into your browsing habits.",
         images: [
             {
-                url: "/lens_homepage.png",
+                url: "/lens_homepage.png", // no size needed i think
                 alt: "lens by vael- Browsing Intelligence by Vael",
             },
         ],

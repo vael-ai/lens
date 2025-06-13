@@ -42,7 +42,7 @@ export default function HomePage() {
                         <span>lens by vael</span>
                     </div>
                     <Link
-                        href="https://github.com/vael-ai/lens"
+                        href="https://use.vael.ai/lens-github"
                         target="_blank"
                         className="text-gray-400 transition-colors hover:text-white"
                     >
@@ -96,7 +96,7 @@ export default function HomePage() {
                             Install Extension <ArrowRight className="w-4 h-4 arrow-slide" />
                         </Link>
                         <Link
-                            href="https://twitter.com/vael_ai/status/1789380050480199922"
+                            href="https://x.com/navincodesalot/status/1933281384438677835"
                             target="_blank"
                             className="inline-flex items-center justify-center gap-2 w-full sm:w-48 lg:w-52 h-12 sm:h-14 px-4 sm:px-6 py-3 sm:py-4 text-sm sm:text-base font-medium bg-[#1a1a2e]/80 backdrop-blur-sm border border-gray-700/50 rounded-lg hover:border-gray-600/70 hover:bg-[#1a1a2e]/90 transition-all duration-300 btn-pop"
                         >

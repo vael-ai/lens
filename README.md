@@ -1,8 +1,7 @@
 # 🔍 lens - Privacy-First Browsing Intelligence
 
-<div align="center">
-<img src="https://i.ibb.co/mV1fThb9/image.png" alt="lens Platform" width="900">
-</div>
+
+Officially Recognized by Martin (YC '23) and incorparted as interns. 
 
 **[lens](https://lens.vael.ai)** is a privacy-first browsing intelligence platform that transforms your browsing behavior into meaningful insights. Built with a secure browser extension and web analytics platform, lens empowers users with deep understanding of their digital habits while maintaining complete data ownership.
 
@@ -127,3 +126,4 @@ MIT License - see [LICENSE](LICENSE) file.
 ---
 
 **Built with ❤️ by [Vael AI](https://vael.ai)**
+
